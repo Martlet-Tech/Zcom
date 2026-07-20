@@ -26,9 +26,13 @@
       <button id="btn-about" class="menu-btn">关于</button>
     </div>
     <div class="menu-right">
-      <select id="com-select" class="com-select">
-        <option value="">— 选择串口 —</option>
-      </select>
+      <div id="com-select" class="custom-select" tabindex="0">
+        <div class="cs-trigger">
+          <span class="cs-text" id="com-select-text">— 选择串口 —</span>
+          <span class="cs-arrow">▾</span>
+        </div>
+        <div class="cs-dropdown" id="com-select-dropdown"></div>
+      </div>
       <select id="baud-select" class="baud-select">
         <option value="300">300</option>
         <option value="1200">1200</option>
@@ -48,7 +52,7 @@
       </select>
       <button id="btn-refresh-ports" class="small-btn" title="刷新串口">↻</button>
       <button id="btn-toggle-port" class="small-btn" disabled>打开</button>
-      <span id="port-status" class="port-status">未连接</span>
+      <span id="port-status" class="port-status" title="未连接"></span>
     </div>
   </div>
 

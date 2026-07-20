@@ -165,13 +165,91 @@ select:focus, input:focus, textarea:focus {
   gap: 6px;
   margin-left: auto;
 }
-.com-select {
-  min-width: 180px;
-  padding: 3px 6px;
+.custom-select {
+  position: relative;
+  width: 220px;
   font-size: 13px;
+  user-select: none;
+  outline: none;
+  flex-shrink: 0;
+}
+.custom-select.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+.cs-trigger {
+  display: flex;
+  align-items: center;
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg2);
+  color: var(--fg);
+  cursor: pointer;
+  min-height: 0;
+  gap: 4px;
+}
+.custom-select:focus .cs-trigger {
+  border-color: var(--accent);
+}
+.cs-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.cs-arrow {
+  font-size: 10px;
+  color: var(--fg-dim);
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+.custom-select.open .cs-arrow {
+  transform: rotate(180deg);
+}
+.cs-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 100%;
+  width: max-content;
+  max-height: 300px;
+  overflow-y: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  margin-top: 2px;
+  z-index: 100;
+  display: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+.custom-select.open .cs-dropdown {
+  display: block;
+}
+.cs-option {
+  padding: 4px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  color: var(--fg);
+  transition: background 0.1s;
+}
+.cs-option:hover {
+  background: var(--bg3);
+}
+.cs-option.selected {
+  background: var(--accent2);
+  color: #fff;
+}
+.cs-option.placeholder {
+  color: var(--fg-dim);
+  cursor: default;
+}
+.cs-option.placeholder:hover {
+  background: transparent;
 }
 .baud-select {
-  width: 100px;
+  width: 72px;
   padding: 3px 6px;
   font-size: 13px;
 }
@@ -181,14 +259,22 @@ select:focus, input:focus, textarea:focus {
   white-space: nowrap;
 }
 .port-status {
-  font-size: 12px;
-  padding: 2px 8px;
-  border-radius: 3px;
-  background: var(--bg2);
-  color: var(--fg-dim);
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--fg-dim);
+  flex-shrink: 0;
+  transition: background 0.2s, box-shadow 0.2s;
 }
-.port-status.connected { color: var(--success); }
-.port-status.disconnected { color: var(--fg-dim); }
+.port-status.connected {
+  background: #2ecc71;
+  box-shadow: 0 0 6px #2ecc71;
+}
+.port-status.error {
+  background: #e74c3c;
+  box-shadow: 0 0 6px #e74c3c;
+}
 
 /* ===== Content ===== */
 #content {

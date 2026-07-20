@@ -36,6 +36,33 @@ pub async fn list_ports() -> Result<Vec<PortInfo>, String> {
     Ok(infos)
 }
 
+fn decode_oem_text(bytes: &[u8]) -> String {
+    #[cfg(windows)]
+    {
+        extern "system" {
+            fn GetOEMCP() -> u32;
+        }
+        let cp = unsafe { GetOEMCP() };
+        match cp {
+            936 => encoding_rs::GBK.decode(bytes).0.into_owned(),
+            932 => encoding_rs::SHIFT_JIS.decode(bytes).0.into_owned(),
+            949 => encoding_rs::EUC_KR.decode(bytes).0.into_owned(),
+            950 => encoding_rs::BIG5.decode(bytes).0.into_owned(),
+            1250 | 1252 | 1254 | 1257 => encoding_rs::WINDOWS_1252.decode(bytes).0.into_owned(),
+            1251 => encoding_rs::WINDOWS_1251.decode(bytes).0.into_owned(),
+            1253 => encoding_rs::ISO_8859_7.decode(bytes).0.into_owned(),
+            1255 => encoding_rs::WINDOWS_1255.decode(bytes).0.into_owned(),
+            1256 => encoding_rs::WINDOWS_1256.decode(bytes).0.into_owned(),
+            1258 => encoding_rs::WINDOWS_1258.decode(bytes).0.into_owned(),
+            _ => String::from_utf8_lossy(bytes).into_owned(),
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        String::from_utf8_lossy(bytes).into_owned()
+    }
+}
+
 fn get_port_description(name: &str) -> Option<String> {
     let output = std::process::Command::new("wmic")
         .args([
@@ -45,13 +72,14 @@ fn get_port_description(name: &str) -> Option<String> {
         ])
         .output()
         .ok()?;
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    for line in stdout.lines() {
+    let text = decode_oem_text(&output.stdout);
+    for line in text.lines() {
         let line = line.trim();
         if line.is_empty() {
             continue;
         }
         if let Some(value) = line.strip_prefix("Name=") {
+            let value: String = value.chars().filter(|c| !c.is_control()).collect();
             let value = value.trim().trim_matches('"');
             if !value.is_empty() {
                 return Some(value.to_string());
