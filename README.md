@@ -38,21 +38,21 @@ Issues and PRs welcome.
 
 ## Features
 
-- **Serial communication** — auto-enumerate COM ports with device descriptions, hot-plug support
-- **Dual-mode I/O** — text / Hex send and receive, switch on the fly
-- **Multi-string sender** — independent window, drag-to-reorder, per-item Hex/delay, loop mode, JSON import/export
-- **Encoding** — UTF-8 / GBK selectable, solves Chinese garbled text
-- **Checksum** — CRC16-Modbus / CRC32 / ADD8 / XOR8, custom insert position
-- **File upload** — chunked send with abort support
-- **Save received data** — dump receive buffer to file
-- **Repeat line folding** — auto-fold identical consecutive lines into <code>[×N]</code>, click to expand
-- **Receive filter** — keyword / regex filter, case-sensitivity toggle, Ctrl+F to focus
-- **Auto-scroll** — pauses on manual scroll, resumes at bottom
-- **Timestamps** — bidirectional send/receive timestamps
-- **Pin window** — main window and multi-string window both support always-on-top
-- **Themes** — dark / light / system / high-contrast
-- **UI customization** — font family, size, and color picker
-- **Persistent config** — all settings auto-saved
+- ⭐ **Serial communication** — auto-enumerate COM ports with device descriptions, hot-plug support
+- ⭐ **Dual-mode I/O** — text / Hex send and receive, switch on the fly
+- ⭐ **Repeat line folding** — auto-fold identical consecutive lines into <code>[×N]</code>, click to expand, right-click for copy / fold below
+- ⭐ **Receive filter** — keyword / regex filter, case-sensitivity toggle, Ctrl+F to focus
+- ⭐ **Multi-string sender** — independent window, drag-to-reorder, per-item Hex/delay, loop mode, JSON import/export
+- ⭐ **Auto-scroll** — pauses on manual scroll, resumes at bottom
+- ⭐ **Timestamps** — bidirectional send/receive timestamps
+- ⭐ **Pin window** — main window and multi-string window both support always-on-top
+- ⭐ **Themes** — dark / light / system / high-contrast
+- ⭐ **Encoding** — UTF-8 / GBK selectable, solves Chinese garbled text
+- ⭐ **Checksum** — CRC16-Modbus / CRC32 / ADD8 / XOR8, custom insert position
+- ⭐ **File upload** — chunked send with abort support
+- ⭐ **Save received data** — dump receive buffer to file
+- ⭐ **UI customization** — font family, size, and color picker
+- ⭐ **Persistent config** — all settings auto-saved
 
 ## Screenshots
 
