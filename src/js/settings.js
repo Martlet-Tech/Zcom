@@ -43,6 +43,8 @@ async function loadDialogValues() {
   if (segTheme) initSegmented(segTheme, ss.theme);
   if (segLineEnd) initSegmented(segLineEnd, ss.lineEnding);
   if (segReceive) initSegmented(segReceive, ss.receiveNewline);
+  const foldCount = document.getElementById('setting-fold-count');
+  if (foldCount) foldCount.value = ss.foldRepeatCount;
 }
 
 function applyStyles(s) {
@@ -81,6 +83,7 @@ export async function initSettings() {
   document.dispatchEvent(new CustomEvent('settings-applied', { detail: s }));
   document.dispatchEvent(new CustomEvent('line-ending-changed', { detail: { lineEnding: s.lineEnding } }));
   document.dispatchEvent(new CustomEvent('receive-newline-changed', { detail: { receiveNewline: s.receiveNewline } }));
+  document.dispatchEvent(new CustomEvent('fold-repeat-changed', { detail: { foldRepeatCount: s.foldRepeatCount } }));
 
   if (systemThemeMedia) {
     systemThemeMedia.removeEventListener('change', systemThemeHandler);
@@ -103,6 +106,7 @@ export async function initSettings() {
       theme: segTheme ? readSegmented(segTheme) || 'dark' : 'dark',
       lineEnding: segLineEnd ? readSegmented(segLineEnd) || 'crlf' : 'crlf',
       receiveNewline: segReceive ? readSegmented(segReceive) || 'auto' : 'auto',
+      foldRepeatCount: parseInt(document.getElementById('setting-fold-count').value) || 5,
     };
 
     const merged = { ...(await getSettings()), ...settings };
@@ -112,6 +116,7 @@ export async function initSettings() {
     document.dispatchEvent(new CustomEvent('settings-applied', { detail: settings }));
     document.dispatchEvent(new CustomEvent('line-ending-changed', { detail: { lineEnding: settings.lineEnding } }));
     document.dispatchEvent(new CustomEvent('receive-newline-changed', { detail: { receiveNewline: settings.receiveNewline } }));
+    document.dispatchEvent(new CustomEvent('fold-repeat-changed', { detail: { foldRepeatCount: settings.foldRepeatCount } }));
   }
 
   async function open() {

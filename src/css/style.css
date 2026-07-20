@@ -324,6 +324,20 @@ select:focus, input:focus, textarea:focus {
 .receive-line:hover {
   background: rgba(255,255,255,0.03);
 }
+.fold-badge {
+  cursor: pointer;
+  background: rgba(255,255,0,0.06);
+  border-left: 3px solid #ffcc00;
+  padding-left: 7px;
+  transition: background 0.15s;
+}
+.fold-badge:hover {
+  background: rgba(255,255,0,0.12);
+}
+.fold-count {
+  color: #ffcc00;
+  font-weight: 700;
+}
 
 /* ===== Filter Bar ===== */
 #filter-bar {
@@ -716,6 +730,30 @@ select:focus, input:focus, textarea:focus {
 }
 
 /* ===== Utility ===== */
+.context-menu {
+  position: fixed;
+  z-index: 9999;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  display: none;
+  min-width: 140px;
+  padding: 4px 0;
+  font-size: 12px;
+}
+.context-menu.visible {
+  display: block;
+}
+.context-item {
+  padding: 6px 16px;
+  cursor: pointer;
+  color: var(--fg);
+  transition: background 0.1s;
+}
+.context-item:hover {
+  background: var(--bg3);
+}
 .hidden { display: none !important; }
 .fade-in {
   animation: fadeIn 0.2s ease;

@@ -4849,7 +4849,7 @@ dependencies = [
 
 [[package]]
 name = "zcom"
-version = "0.2.0"
+version = "0.4.0"
 dependencies = [
  "crc",
  "encoding_rs",

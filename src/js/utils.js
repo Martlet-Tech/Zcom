@@ -26,6 +26,7 @@ const defaults = {
   baudRate: 115200,
   lineEnding: 'crlf',
   receiveNewline: 'auto',
+  foldRepeatCount: 5,
 };
 
 export async function getSettings() {
