@@ -3,9 +3,11 @@ import { getSettings, saveSettings } from './utils.js';
 
 let currentPort = null;
 let portOpen = false;
+let baudRate = 115200;
 
 export function initMenu() {
   const comSelect = document.getElementById('com-select');
+  const baudSelect = document.getElementById('baud-select');
   const refreshBtn = document.getElementById('btn-refresh-ports');
   const toggleBtn = document.getElementById('btn-toggle-port');
   const statusEl = document.getElementById('port-status');
@@ -40,6 +42,13 @@ export function initMenu() {
 
   refresh();
 
+  // Restore saved baud rate
+  (async () => {
+    const saved = await getSettings();
+    baudRate = saved.baudRate || 115200;
+    baudSelect.value = String(baudRate);
+  })();
+
   refreshBtn.addEventListener('click', refresh);
 
   comSelect.addEventListener('change', async () => {
@@ -48,6 +57,27 @@ export function initMenu() {
     const s = await getSettings();
     s.currentPort = currentPort || '';
     await saveSettings(s);
+  });
+
+  baudSelect.addEventListener('change', async () => {
+    baudRate = parseInt(baudSelect.value);
+    const s = await getSettings();
+    s.baudRate = baudRate;
+    await saveSettings(s);
+
+    if (portOpen) {
+      try {
+        await invoke('set_baud_rate', { path: currentPort, baud: baudRate });
+      } catch (e) {
+        console.error('baud rate change error:', e);
+        portOpen = false;
+        toggleBtn.textContent = '打开';
+        statusEl.textContent = '设置失败';
+        statusEl.className = 'port-status disconnected';
+        comSelect.disabled = false;
+        document.dispatchEvent(new CustomEvent('port-state-change', { detail: { open: false } }));
+      }
+    }
   });
 
   toggleBtn.addEventListener('click', async () => {
@@ -66,7 +96,7 @@ export function initMenu() {
     } else {
       if (!currentPort) return;
       try {
-        await invoke('open_port', { path: currentPort, baud: 115200 });
+        await invoke('open_port', { path: currentPort, baud: baudRate });
         portOpen = true;
         toggleBtn.textContent = '关闭';
         statusEl.textContent = '已连接';

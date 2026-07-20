@@ -23,6 +23,7 @@ const defaults = {
   encoding: 'utf-8',
   theme: 'dark',
   panelHidden: false,
+  baudRate: 115200,
 };
 
 export async function getSettings() {

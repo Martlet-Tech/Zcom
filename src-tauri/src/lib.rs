@@ -26,6 +26,7 @@ pub fn run() {
             serial_cmd::load_multi_strings,
             serial_cmd::save_multi_strings,
             serial_cmd::decode_bytes,
+            serial_cmd::set_baud_rate,
         ])
         .setup(|_app| {
             Ok(())

@@ -44,12 +44,20 @@ pub async fn open_port(
     baud: u32,
 ) -> Result<(), String> {
     let _guard = state.op_lock.lock().await;
+    open_port_inner(&state, &app, &path, baud).await
+}
 
+async fn open_port_inner(
+    state: &SerialState,
+    app: &tauri::AppHandle,
+    path: &str,
+    baud: u32,
+) -> Result<(), String> {
     if state.connected.load(Ordering::SeqCst) {
         return Err("Port already open".into());
     }
 
-    let port = serialport::new(&path, baud)
+    let port = serialport::new(path, baud)
         .data_bits(serialport::DataBits::Eight)
         .flow_control(serialport::FlowControl::None)
         .parity(serialport::Parity::None)
@@ -62,7 +70,8 @@ pub async fn open_port(
         .map_err(|e| format!("Cannot set timeout: {}", e))?;
 
     *state.port.lock().await = Some(port);
-    *state.port_name.lock().await = Some(path.clone());
+    *state.port_name.lock().await = Some(path.to_string());
+    state.baud_rate.store(baud, Ordering::SeqCst);
     state.connected.store(true, Ordering::SeqCst);
     state.stop_reading.store(false, Ordering::SeqCst);
     state.tx_bytes.store(0, Ordering::SeqCst);
@@ -71,6 +80,7 @@ pub async fn open_port(
     let stop_flag = state.stop_reading.clone();
     let rx_count = state.rx_bytes.clone();
     let connected_flag = state.connected.clone();
+    let suppress_emit = state.suppress_close_event.clone();
     let app_handle = app.clone();
 
     let handle = tokio::task::spawn_blocking(move || {
@@ -101,7 +111,9 @@ pub async fn open_port(
             }
         }
         connected_flag.store(false, Ordering::SeqCst);
-        let _ = app_handle.emit("port-closed", ());
+        if !suppress_emit.load(Ordering::SeqCst) {
+            let _ = app_handle.emit("port-closed", ());
+        }
     });
 
     *state.read_handle.lock().await = Some(handle);
@@ -114,7 +126,12 @@ pub async fn close_port(
     state: tauri::State<'_, SerialState>,
 ) -> Result<(), String> {
     let _guard = state.op_lock.lock().await;
+    close_port_inner(&state).await
+}
 
+async fn close_port_inner(
+    state: &SerialState,
+) -> Result<(), String> {
     state.stop_reading.store(true, Ordering::SeqCst);
     state.connected.store(false, Ordering::SeqCst);
 
@@ -133,6 +150,27 @@ pub async fn close_port(
     *state.port_name.lock().await = None;
 
     Ok(())
+}
+
+#[tauri::command]
+pub async fn set_baud_rate(
+    state: tauri::State<'_, SerialState>,
+    app: tauri::AppHandle,
+    path: String,
+    baud: u32,
+) -> Result<(), String> {
+    let _guard = state.op_lock.lock().await;
+
+    state.suppress_close_event.store(true, Ordering::SeqCst);
+
+    let result = async {
+        close_port_inner(&state).await?;
+        open_port_inner(&state, &app, &path, baud).await
+    }.await;
+
+    state.suppress_close_event.store(false, Ordering::SeqCst);
+
+    result
 }
 
 fn encode_text(text: &str, encoding: &str) -> Vec<u8> {
@@ -232,7 +270,7 @@ pub async fn get_port_info(
         "connected": connected,
         "tx": tx,
         "rx": rx,
-        "baud": 115200,
+        "baud": state.baud_rate.load(Ordering::SeqCst),
         "dataBits": 8,
         "parity": "None",
         "stopBits": 1,

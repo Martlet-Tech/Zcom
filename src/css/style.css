@@ -170,6 +170,11 @@ select:focus, input:focus, textarea:focus {
   padding: 3px 6px;
   font-size: 13px;
 }
+.baud-select {
+  width: 100px;
+  padding: 3px 6px;
+  font-size: 13px;
+}
 .small-btn {
   padding: 3px 10px;
   font-size: 12px;
