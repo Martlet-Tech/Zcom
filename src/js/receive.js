@@ -20,9 +20,8 @@ let filterCount = null;
 let filterDebounceTimer = null;
 
 let lineBuffer = '';
-let flushTimer = null;
 let lastDirection = 'R';
-const FLUSH_DELAY = 300;
+let processQueue = Promise.resolve();
 
 function matchesFilter(text) {
   if (!filterText) return true;
@@ -142,12 +141,6 @@ function appendLine(text) {
   }
 }
 
-function flushBuffer() {
-  if (!lineBuffer) return;
-  const line = showTimestamp ? `[${lastDirection}-${timestamp()}] ${lineBuffer}` : lineBuffer;
-  appendLine(line);
-  lineBuffer = '';
-}
 
 function appendChunkLine(text) {
   if (showTimestamp) text = `[${lastDirection}-${timestamp()}] ${text}`;
@@ -171,6 +164,10 @@ function appendStreamText(text) {
 }
 
 export async function appendData(bytes, direction) {
+  processQueue = processQueue.then(() => processData(bytes, direction));
+}
+
+async function processData(bytes, direction) {
   lastDirection = direction;
 
   if (hexDisplay) {
@@ -203,9 +200,6 @@ export async function appendData(bytes, direction) {
     appendLine(line);
   }
   lineBuffer = parts[parts.length - 1];
-
-  clearTimeout(flushTimer);
-  flushTimer = setTimeout(flushBuffer, FLUSH_DELAY);
 }
 
 function appendSentText(text) {
@@ -261,7 +255,6 @@ export function setEncoding(enc) {
 
 export function clearReceive() {
   lineBuffer = '';
-  clearTimeout(flushTimer);
   if (receiveContent) {
     receiveContent.innerHTML = '';
   }
