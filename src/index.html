@@ -40,6 +40,14 @@
       <div id="receive-content"></div>
     </div>
 
+    <div id="filter-bar">
+      <span class="filter-icon">🔍</span>
+      <input type="text" id="filter-input" class="filter-input" placeholder="过滤..." spellcheck="false" />
+      <button id="filter-btn-case" class="filter-btn" title="大小写敏感">Aa</button>
+      <button id="filter-btn-regex" class="filter-btn" title="正则模式">.*</button>
+      <button id="filter-btn-clear" class="filter-btn" title="清除过滤">✕</button>
+      <span id="filter-count" class="filter-count"></span>
+    </div>
     <div id="bottom-panel">
       <div id="file-ops" class="bottom-row">
         <button id="btn-file-open" class="small-btn">📂 打开文件</button>
@@ -89,6 +97,7 @@
     <div class="status-group" id="port-info">
       <span>未连接</span>
     </div>
+    <button id="btn-toggle-panel" class="status-toggle" title="折叠底部面板">▼</button>
   </div>
 
   <div id="settings-overlay" class="overlay hidden">

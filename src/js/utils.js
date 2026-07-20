@@ -22,6 +22,7 @@ const defaults = {
   checksumPos: '+0',
   encoding: 'utf-8',
   theme: 'dark',
+  panelHidden: false,
 };
 
 export async function getSettings() {

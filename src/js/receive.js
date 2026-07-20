@@ -11,11 +11,120 @@ let receiveArea = null;
 let paused = false;
 const MAX_LINES = 10000;
 
+let filterText = '';
+let filterCaseSensitive = false;
+let filterRegex = false;
+let filterInput = null;
+let filterCount = null;
+let filterDebounceTimer = null;
+
+function matchesFilter(text) {
+  if (!filterText) return true;
+  let content = text;
+  let search = filterText;
+  if (!filterCaseSensitive) {
+    content = content.toLowerCase();
+    search = search.toLowerCase();
+  }
+  if (filterRegex) {
+    try {
+      return new RegExp(filterText, filterCaseSensitive ? '' : 'i').test(text);
+    } catch {
+      return false;
+    }
+  }
+  return content.includes(search);
+}
+
+function applyFilter() {
+  filterText = filterInput ? filterInput.value : '';
+  if (!receiveContent) return;
+
+  const lines = receiveContent.children;
+  let matchCount = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const matches = matchesFilter(lines[i].textContent);
+    lines[i].style.display = matches ? '' : 'none';
+    if (matches) matchCount++;
+  }
+
+  if (!filterCount) return;
+  if (filterText) {
+    filterCount.textContent = `${matchCount}/${lines.length}`;
+    filterCount.classList.toggle('no-match', matchCount === 0);
+  } else {
+    filterCount.textContent = '';
+    filterCount.classList.remove('no-match');
+  }
+}
+
+function clearFilter() {
+  if (filterInput) {
+    filterInput.value = '';
+    filterInput.blur();
+  }
+  filterText = '';
+  applyFilter();
+}
+
+function initFilter() {
+  filterInput = document.getElementById('filter-input');
+  filterCount = document.getElementById('filter-count');
+  const caseBtn = document.getElementById('filter-btn-case');
+  const regexBtn = document.getElementById('filter-btn-regex');
+  const clearBtn = document.getElementById('filter-btn-clear');
+
+  if (!filterInput) return;
+
+  filterInput.addEventListener('input', () => {
+    clearTimeout(filterDebounceTimer);
+    filterDebounceTimer = setTimeout(applyFilter, 150);
+  });
+
+  filterInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      clearFilter();
+    }
+  });
+
+  if (caseBtn) {
+    caseBtn.addEventListener('click', () => {
+      filterCaseSensitive = !filterCaseSensitive;
+      caseBtn.classList.toggle('active');
+      applyFilter();
+    });
+  }
+
+  if (regexBtn) {
+    regexBtn.addEventListener('click', () => {
+      filterRegex = !filterRegex;
+      regexBtn.classList.toggle('active');
+      applyFilter();
+    });
+  }
+
+  if (clearBtn) {
+    clearBtn.addEventListener('click', clearFilter);
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+      e.preventDefault();
+      filterInput.focus();
+      filterInput.select();
+    }
+  });
+}
+
 function appendLine(text) {
   if (!receiveContent) return;
   const line = document.createElement('div');
   line.className = 'receive-line';
   line.textContent = text;
+  if (filterText && !matchesFilter(text)) {
+    line.style.display = 'none';
+  }
   receiveContent.appendChild(line);
 
   while (receiveContent.children.length > MAX_LINES) {
@@ -51,6 +160,8 @@ export async function initReceive() {
   receiveContent = document.getElementById('receive-content');
   receiveArea = document.getElementById('receive-area');
   if (!receiveContent || !receiveArea) return;
+
+  initFilter();
 
   const s = await getSettings();
   hexDisplay = s.hexDisplay;
@@ -89,6 +200,10 @@ export function setEncoding(enc) {
 export function clearReceive() {
   if (receiveContent) {
     receiveContent.innerHTML = '';
+  }
+  if (filterCount) {
+    filterCount.textContent = '';
+    filterCount.classList.remove('no-match');
   }
 }
 
