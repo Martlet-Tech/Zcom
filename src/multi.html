@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>多字符串发送</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="multi-body">
+  <div id="multi-titlebar">
+    <div class="titlebar-drag" data-tauri-drag-region>
+      <span class="titlebar-title">多字符串发送</span>
+    </div>
+    <div class="titlebar-controls">
+      <button id="multi-btn-pin" class="title-btn" title="窗口置顶">📌</button>
+      <button id="multi-btn-minimize" class="title-btn" title="最小化">─</button>
+      <button id="multi-btn-close" class="title-btn" title="关闭">✕</button>
+    </div>
+  </div>
+
+  <div id="multi-toolbar">
+    <label class="chk-label">
+      <input type="checkbox" id="multi-chk-loop" /> 循环发送
+    </label>
+    <button id="multi-btn-add" class="small-btn">➕ 添加</button>
+    <button id="multi-btn-del-all" class="small-btn">🗑 全部删除</button>
+    <button id="multi-btn-export" class="small-btn">📤 导出 JSON</button>
+    <button id="multi-btn-import" class="small-btn">📥 导入 JSON</button>
+  </div>
+
+  <div id="multi-list"></div>
+
+  <script type="module" src="js/multi.js"></script>
+</body>
+</html>

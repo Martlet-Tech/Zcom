@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>COM调试助手</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="titlebar">
+    <div class="titlebar-drag" data-tauri-drag-region>
+      <span class="titlebar-title">COM调试助手</span>
+    </div>
+    <div class="titlebar-controls">
+      <button id="btn-pin" class="title-btn" title="窗口置顶">📌</button>
+      <button id="btn-multi" class="title-btn" title="多字符串发送">📋</button>
+      <button id="btn-minimize" class="title-btn" title="最小化">─</button>
+      <button id="btn-maximize" class="title-btn" title="最大化">□</button>
+      <button id="btn-close" class="title-btn" title="关闭">✕</button>
+    </div>
+  </div>
+
+  <div id="menu-bar">
+    <div class="menu-left">
+      <button id="btn-settings" class="menu-btn">设置</button>
+      <button id="btn-about" class="menu-btn">关于</button>
+    </div>
+    <div class="menu-right">
+      <select id="com-select" class="com-select">
+        <option value="">— 选择串口 —</option>
+      </select>
+      <button id="btn-refresh-ports" class="small-btn" title="刷新串口">↻</button>
+      <button id="btn-toggle-port" class="small-btn" disabled>打开</button>
+      <span id="port-status" class="port-status">未连接</span>
+    </div>
+  </div>
+
+  <div id="content">
+    <div id="receive-area">
+      <div id="receive-content"></div>
+    </div>
+
+    <div id="bottom-panel">
+      <div id="file-ops" class="bottom-row">
+        <button id="btn-file-open" class="small-btn">📂 打开文件</button>
+        <span id="file-path" class="file-path-label">未选择文件</span>
+        <button id="btn-file-send" class="small-btn" disabled>📤 发送文件</button>
+        <button id="btn-file-save" class="small-btn">💾 保存接收</button>
+        <button id="btn-clear-receive" class="small-btn">🗑 清空</button>
+      </div>
+      <div id="checksum-area" class="bottom-row">
+        <label class="chk-label">
+          <input type="checkbox" id="chk-checksum" /> 加校验
+        </label>
+        <select id="checksum-type" class="small-select" disabled>
+          <option value="crc16">CRC16-Modbus</option>
+          <option value="crc32">CRC32</option>
+          <option value="add8">ADD8</option>
+          <option value="xor8">XOR8</option>
+        </select>
+        <span class="label">位置:</span>
+        <input type="text" id="checksum-pos" class="small-input" value="+0" disabled />
+        <span class="label">校验码:</span>
+        <span id="checksum-result" class="checksum-value">—</span>
+      </div>
+      <div id="send-area" class="bottom-row">
+        <textarea id="send-text" class="send-textarea" rows="4" placeholder="输入要发送的数据..."></textarea>
+        <div class="send-right">
+          <button id="btn-send" class="send-btn" disabled>发送</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="status-bar">
+    <div class="status-group">
+      <label class="chk-label"><input type="checkbox" id="chk-hex-send" /> Hex发送</label>
+      <label class="chk-label"><input type="checkbox" id="chk-hex-display" /> Hex显示</label>
+      <label class="chk-label"><input type="checkbox" id="chk-timestamp" checked /> 时间戳</label>
+      <select id="encoding-select" class="small-select" title="编码">
+        <option value="utf-8">UTF-8</option>
+        <option value="gbk">GBK</option>
+      </select>
+    </div>
+    <div class="status-group">
+      <span id="stat-tx">Tx: 0</span>
+      <span id="stat-rx">Rx: 0</span>
+    </div>
+    <div class="status-group" id="port-info">
+      <span>未连接</span>
+    </div>
+  </div>
+
+  <div id="settings-overlay" class="overlay hidden">
+    <div id="settings-dialog" class="dialog">
+      <div class="dialog-titlebar">
+        <span>系统设置</span>
+        <button class="dialog-close title-btn">✕</button>
+      </div>
+      <div class="dialog-body">
+        <div class="setting-row">
+          <label>界面字号:</label>
+          <input type="number" id="setting-font-size" value="14" min="10" max="24" class="small-input" />
+        </div>
+        <div class="setting-row">
+          <label>接收区字体:</label>
+          <select id="setting-receive-font" class="small-select">
+            <option value="Consolas">Consolas</option>
+            <option value="Courier New">Courier New</option>
+            <option value="monospace">monospace</option>
+            <option value="YaHei Consolas Hybrid">YaHei Consolas Hybrid</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <label>接收区字号:</label>
+          <input type="number" id="setting-receive-size" value="14" min="8" max="48" class="small-input" />
+        </div>
+        <div class="setting-row">
+          <label>接收区颜色:</label>
+          <input type="color" id="setting-receive-color" value="#00ff00" />
+        </div>
+        <div class="setting-row">
+          <label>背景色:</label>
+          <input type="color" id="setting-bg-color" value="#1a1a2e" />
+        </div>
+      </div>
+      <div class="dialog-footer">
+        <button id="setting-apply" class="small-btn primary">应用</button>
+        <button id="setting-close" class="small-btn">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/utils.js"></script>
+  <script type="module" src="js/titlebar.js"></script>
+  <script type="module" src="js/menu.js"></script>
+  <script type="module" src="js/receive.js"></script>
+  <script type="module" src="js/bottom.js"></script>
+  <script type="module" src="js/statusbar.js"></script>
+  <script type="module" src="js/settings.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
