@@ -57,4 +57,5 @@ document.addEventListener('DOMContentLoaded', async () => {
       invoke('open_multi_string_window').catch(console.error);
     });
   }
+
 });
