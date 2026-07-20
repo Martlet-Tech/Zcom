@@ -19,9 +19,7 @@ let filterInput = null;
 let filterCount = null;
 let filterDebounceTimer = null;
 
-let lineBuffer = '';
 let lastDirection = 'R';
-let processQueue = Promise.resolve();
 
 function matchesFilter(text) {
   if (!filterText) return true;
@@ -141,7 +139,6 @@ function appendLine(text) {
   }
 }
 
-
 function appendChunkLine(text) {
   if (showTimestamp) text = `[${lastDirection}-${timestamp()}] ${text}`;
   appendLine(text);
@@ -164,10 +161,6 @@ function appendStreamText(text) {
 }
 
 export async function appendData(bytes, direction) {
-  processQueue = processQueue.then(() => processData(bytes, direction));
-}
-
-async function processData(bytes, direction) {
   lastDirection = direction;
 
   if (hexDisplay) {
@@ -192,14 +185,12 @@ async function processData(bytes, direction) {
     return;
   }
 
-  lineBuffer += text;
-
-  const parts = lineBuffer.split(/\r\n|\r|\n/);
-  for (let i = 0; i < parts.length - 1; i++) {
+  const parts = text.split(/\r\n|\r|\n/);
+  const count = /[\r\n]$/.test(text) ? parts.length - 1 : parts.length;
+  for (let i = 0; i < count; i++) {
     const line = showTimestamp ? `[${direction}-${timestamp()}] ${parts[i]}` : parts[i];
     appendLine(line);
   }
-  lineBuffer = parts[parts.length - 1];
 }
 
 function appendSentText(text) {
@@ -254,7 +245,6 @@ export function setEncoding(enc) {
 }
 
 export function clearReceive() {
-  lineBuffer = '';
   if (receiveContent) {
     receiveContent.innerHTML = '';
   }
