@@ -54,11 +54,12 @@ pub async fn open_port(
         .flow_control(serialport::FlowControl::None)
         .parity(serialport::Parity::None)
         .stop_bits(serialport::StopBits::One)
-        .timeout(Duration::from_millis(200))
         .open()
         .map_err(|e| format!("Failed to open {}: {}", path, e))?;
 
-    let reader = port.try_clone().map_err(|e| format!("Cannot clone port: {}", e))?;
+    let mut reader = port.try_clone().map_err(|e| format!("Cannot clone port: {}", e))?;
+    reader.set_timeout(Duration::from_millis(1))
+        .map_err(|e| format!("Cannot set timeout: {}", e))?;
 
     *state.port.lock().await = Some(port);
     *state.port_name.lock().await = Some(path.clone());
@@ -90,6 +91,7 @@ pub async fn open_port(
                     let _ = app_handle.emit("serial-data", data);
                 }
                 Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => {
+                    std::thread::sleep(Duration::from_millis(10));
                     continue;
                 }
                 Err(e) => {
