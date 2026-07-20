@@ -1,4 +1,15 @@
 import { getSettings, saveSettings } from './utils.js';
+import { emit } from '@tauri-apps/api/event';
+
+let systemThemeMedia = null;
+let systemThemeHandler = null;
+
+function setThemeClass(theme) {
+  const html = document.documentElement;
+  html.className = theme === 'system'
+    ? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'theme-light' : '')
+    : (theme === 'dark' ? '' : `theme-${theme}`);
+}
 
 export async function initSettings() {
   const overlay = document.getElementById('settings-overlay');
@@ -11,6 +22,7 @@ export async function initSettings() {
   const receiveSize = document.getElementById('setting-receive-size');
   const receiveColor = document.getElementById('setting-receive-color');
   const bgColor = document.getElementById('setting-bg-color');
+  const themeRadios = document.querySelectorAll('input[name="theme"]');
 
   const s = await getSettings();
   fontSize.value = s.fontSize;
@@ -18,6 +30,19 @@ export async function initSettings() {
   receiveSize.value = s.receiveSize;
   receiveColor.value = s.receiveColor;
   bgColor.value = s.bgColor;
+  themeRadios.forEach(r => { if (r.value === s.theme) r.checked = true; });
+  setThemeClass(s.theme);
+
+  if (systemThemeMedia) {
+    systemThemeMedia.removeEventListener('change', systemThemeHandler);
+  }
+  systemThemeMedia = window.matchMedia('(prefers-color-scheme: light)');
+  systemThemeHandler = () => {
+    getSettings().then(s => {
+      if (s.theme === 'system') setThemeClass('system');
+    });
+  };
+  systemThemeMedia.addEventListener('change', systemThemeHandler);
 
   async function applySettings() {
     const settings = {
@@ -27,6 +52,10 @@ export async function initSettings() {
       receiveColor: receiveColor.value,
       bgColor: bgColor.value,
     };
+    let theme = 'dark';
+    themeRadios.forEach(r => { if (r.checked) theme = r.value; });
+    settings.theme = theme;
+
     const merged = { ...(await getSettings()), ...settings };
     await saveSettings(merged);
     document.documentElement.style.fontSize = settings.fontSize + 'px';
@@ -35,6 +64,8 @@ export async function initSettings() {
     document.documentElement.style.setProperty('--receive-size', settings.receiveSize + 'px');
     document.documentElement.style.setProperty('--receive-color', settings.receiveColor);
     document.documentElement.style.setProperty('--receive-bg', settings.bgColor);
+    setThemeClass(theme);
+    emit('theme-changed', theme);
     document.dispatchEvent(new CustomEvent('settings-applied', { detail: settings }));
   }
 
@@ -54,6 +85,7 @@ export async function initSettings() {
     receiveSize.value = s.receiveSize;
     receiveColor.value = s.receiveColor;
     bgColor.value = s.bgColor;
+    themeRadios.forEach(r => { if (r.value === s.theme) r.checked = true; });
   }
 
   document.addEventListener('open-settings', open);

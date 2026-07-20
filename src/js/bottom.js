@@ -149,26 +149,18 @@ export async function initBottom() {
     const encoding = document.getElementById('encoding-select')?.value || 'utf-8';
 
     if (chkChecksum.checked) {
+      const algo = checksumType.value;
+      const pos = parseInt(checksumPos.value) || 0;
       try {
-        const algo = checksumType.value;
-        const pos = parseInt(checksumPos.value) || 0;
         const r = await invoke('calculate_checksum', { data: text, hexMode, algo, position: pos });
-        sendText.value = r.appliedHex;
+        document.dispatchEvent(new CustomEvent('send-echo', { detail: { text: r.appliedHex } }));
+        await invoke('send_data_raw', { data: text, hexMode, encoding, checksumAlgo: algo, checksumPos: pos });
       } catch (e) {
         console.error('Checksum error:', e);
-        return;
       }
-      const echoText = sendText.value;
-      await invoke('send_data', { data: echoText, hexMode: true, encoding });
-      sendText.value = text;
-      document.dispatchEvent(new CustomEvent('send-echo', { detail: { text: echoText } }));
     } else {
-      try {
-        await invoke('send_data', { data: text, hexMode, encoding });
-        document.dispatchEvent(new CustomEvent('send-echo', { detail: { text } }));
-      } catch (e) {
-        console.error('Send error:', e);
-      }
+      document.dispatchEvent(new CustomEvent('send-echo', { detail: { text } }));
+      await invoke('send_data_raw', { data: text, hexMode, encoding });
     }
   });
 

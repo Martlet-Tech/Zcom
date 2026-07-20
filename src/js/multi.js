@@ -1,8 +1,9 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { listen } from '@tauri-apps/api/event';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { writeTextFile, readTextFile } from '@tauri-apps/plugin-fs';
-import { parseHexString } from './utils.js';
+import { parseHexString, getSettings } from './utils.js';
 
 let items = [];
 let loopRunning = false;
@@ -11,6 +12,14 @@ let draggedItem = null;
 
 export async function initMulti() {
   const win = getCurrentWindow();
+
+  const s = await getSettings();
+  applyThemeClass(s.theme || 'dark');
+  if (s.theme === 'system') {
+    const mq = window.matchMedia('(prefers-color-scheme: light)');
+    mq.addEventListener('change', () => applyThemeClass('system'));
+  }
+  listen('theme-changed', (e) => applyThemeClass(e.payload));
 
   document.getElementById('multi-btn-minimize')?.addEventListener('click', () => win.minimize());
   document.getElementById('multi-btn-close')?.addEventListener('click', () => win.close());
@@ -247,6 +256,16 @@ async function startLoop() {
 function stopLoop() {
   loopAbort = true;
   loopRunning = false;
+}
+
+function applyThemeClass(theme) {
+  const html = document.documentElement;
+  if (theme === 'system') {
+    const light = window.matchMedia('(prefers-color-scheme: light)').matches;
+    html.className = light ? 'theme-light' : '';
+  } else {
+    html.className = theme === 'dark' ? '' : `theme-${theme}`;
+  }
 }
 
 initMulti();

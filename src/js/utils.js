@@ -21,6 +21,7 @@ const defaults = {
   checksumType: 'crc16',
   checksumPos: '+0',
   encoding: 'utf-8',
+  theme: 'dark',
 };
 
 export async function getSettings() {

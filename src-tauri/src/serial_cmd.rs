@@ -160,6 +160,36 @@ pub async fn send_data(
 }
 
 #[tauri::command]
+pub async fn send_data_raw(
+    state: tauri::State<'_, SerialState>,
+    data: String,
+    hex_mode: bool,
+    encoding: Option<String>,
+    checksum_algo: Option<String>,
+    checksum_pos: Option<i32>,
+) -> Result<(), String> {
+    let bytes = if hex_mode {
+        parse_hex_string(&data).map_err(|e| format!("Hex parse error: {}", e))?
+    } else {
+        let enc = encoding.as_deref().unwrap_or("utf-8");
+        encode_text(&data, enc)
+    };
+
+    let bytes = if let Some(ref algo) = checksum_algo {
+        let pos = checksum_pos.unwrap_or(0);
+        checksum::apply_checksum(&bytes, algo, pos)
+    } else {
+        bytes
+    };
+
+    let mut port = state.port.lock().await;
+    let port = port.as_mut().ok_or("Port not open")?;
+    port.write_all(&bytes).map_err(|e| format!("Write error: {}", e))?;
+    state.tx_bytes.fetch_add(bytes.len() as u64, Ordering::SeqCst);
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn send_raw_bytes(
     state: tauri::State<'_, SerialState>,
     bytes: Vec<u8>,

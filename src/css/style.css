@@ -25,6 +25,28 @@
   --statusbar-h: 28px;
 }
 
+.theme-light {
+  --bg: #f0f2f5;
+  --bg2: #ffffff;
+  --bg3: #d9dce0;
+  --fg: #1a1a2e;
+  --fg-dim: #6b7280;
+  --accent: #0077b6;
+  --accent2: #00b4d8;
+  --border: #d1d5db;
+}
+
+.theme-high-contrast {
+  --bg: #000000;
+  --bg2: #0d0d0d;
+  --bg3: #1a1a3e;
+  --fg: #ffffff;
+  --fg-dim: #cccccc;
+  --accent: #ffff00;
+  --accent2: #ffcc00;
+  --border: #ffffff;
+}
+
 html, body {
   height: 100%;
   overflow: hidden;
@@ -384,6 +406,21 @@ select:focus, input:focus, textarea:focus {
   height: 30px;
   padding: 2px;
   cursor: pointer;
+}
+
+.theme-radios {
+  display: flex;
+  gap: 12px;
+}
+.theme-radios label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.theme-radios input[type="radio"] {
+  accent-color: var(--accent);
 }
 
 /* ===== Multi-string ===== */
