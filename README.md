@@ -45,6 +45,7 @@ Issues and PRs welcome.
 - **Checksum** — CRC16-Modbus / CRC32 / ADD8 / XOR8, custom insert position
 - **File upload** — chunked send with abort support
 - **Save received data** — dump receive buffer to file
+- **Repeat line folding** — auto-fold identical consecutive lines into <code>[×N]</code>, click to expand
 - **Receive filter** — keyword / regex filter, case-sensitivity toggle, Ctrl+F to focus
 - **Auto-scroll** — pauses on manual scroll, resumes at bottom
 - **Timestamps** — bidirectional send/receive timestamps
@@ -65,6 +66,12 @@ Issues and PRs welcome.
   <img src="screenshots/multi-strings.png" width="600" alt="Multi-string window">
   <br>
   <em>Multi-string sender — drag-to-reorder, per-item Hex/delay, loop mode</em>
+</p>
+
+<p align="center">
+  <img src="screenshots/fold.png" width="700" alt="Repeat line folding">
+  <br>
+  <em>Repeat line folding — auto-fold identical consecutive lines into <code>[×N]</code>, click to expand, right-click for copy / fold below</em>
 </p>
 
 ## Quick Start
