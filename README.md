@@ -5,7 +5,11 @@
 <h1 align="center">ZCOM</h1>
 
 <p align="center">
-  高性能串口调试助手 — Rust + Tauri
+  High-performance serial debug assistant — Rust + Tauri
+</p>
+
+<p align="center">
+  English · <a href="README.zh.md">中文</a>
 </p>
 
 <p align="center">
@@ -16,74 +20,73 @@
 
 ---
 
-## 缘起
+## Why ZCOM?
 
-笔者做电子/单片机开发十几年，sscom 用了十五年。
-中间试过无数串口助手，但手感始终不如 sscom，一直没换掉。
+After 15+ years of embedded/microcontroller work, I had tried every serial tool out there — but none felt right except sscom (a classic Chinese serial tool). So I never switched.
 
-但 sscom 有一些从来没人修的痛点：
+But sscom has pain points that were never fixed:
 
-1. **自动滚屏无法暂停** — 数据一刷想回头看前面的，得手动拽滚动条，松手又弹到底
-2. **多字符串轮发占用主窗口** — 面板嵌在主界面里，占半个屏幕，关掉又没法用
-3. **UTF-8 编码问题** — 发中文出去大概率乱码，得手动算字节
-4. **没有暗色主题** — 实验室灯光昏暗，sscom 的亮白界面格外刺眼
-5. **窗口不能置顶** — 边看 PDF 寄存器表边调设备，来回切屏效率极低
-6. **接收区搜索/过滤缺失** — 数据量一大，想从中找某条特定报文只能肉眼扫描
+1. **Auto-scroll can't pause** — data keeps pushing the view down; look back and it snaps to bottom
+2. **Multi-string panel steals screen space** — embedded in the main window, takes half the UI
+3. **UTF-8 encoding broken** — Chinese text garbled without manual byte calculation
+4. **No dark theme** — blinding white interface in a dim lab
+5. **Can't pin window** — constant alt-tab while reading PDF datasheets
+6. **No receiver search/filter** — hunting for a specific packet means squinting at a wall of text
 
-借着这波 AI 编程浪潮，斗胆自己动手做一个试试。
-写得不好，大家多包涵，欢迎提 issue 和 PR。
+With the help of AI-assisted coding, I decided to build a modern replacement.
+Issues and PRs welcome.
 
-## 特性
+## Features
 
-- **串口通信** — 自动枚举 COM 口，显示设备名称，支持 USB 串口热插拔
-- **双模收发** — 文本/Hex 发送与接收，实时切换
-- **多字符串发送** — 独立窗口，条目拖拽排序，独立 Hex/延迟控制，循环发送，JSON 导入导出
-- **编码支持** — UTF-8 / GBK 可选，解决中文乱码问题
-- **校验码** — CRC16-Modbus / CRC32 / ADD8 / XOR8，支持自定义插入位置
-- **文件发送** — 选择文件分块发送，支持中止
-- **接收保存** — 接收区数据保存到文件
-- **接收过滤** — 按关键词/正则过滤接收区，支持大小写开关，Ctrl+F 快速定位
-- **自动滚屏** — 数据滚动时自动暂停，滚动到底自动继续
-- **时间戳** — 收发双向时间戳标记
-- **置顶窗口** — 主窗口和多字符串窗口均支持置顶
-- **主题切换** — 深色/浅色/系统/高对比
-- **界面设置** — 字号、字体、颜色自定义
-- **配置持久化** — 所有设置自动保存
+- **Serial communication** — auto-enumerate COM ports with device descriptions, hot-plug support
+- **Dual-mode I/O** — text / Hex send and receive, switch on the fly
+- **Multi-string sender** — independent window, drag-to-reorder, per-item Hex/delay, loop mode, JSON import/export
+- **Encoding** — UTF-8 / GBK selectable, solves Chinese garbled text
+- **Checksum** — CRC16-Modbus / CRC32 / ADD8 / XOR8, custom insert position
+- **File upload** — chunked send with abort support
+- **Save received data** — dump receive buffer to file
+- **Receive filter** — keyword / regex filter, case-sensitivity toggle, Ctrl+F to focus
+- **Auto-scroll** — pauses on manual scroll, resumes at bottom
+- **Timestamps** — bidirectional send/receive timestamps
+- **Pin window** — main window and multi-string window both support always-on-top
+- **Themes** — dark / light / system / high-contrast
+- **UI customization** — font family, size, and color picker
+- **Persistent config** — all settings auto-saved
 
-## 截图
+## Screenshots
 
 <p align="center">
-  <img src="screenshots/main.png" width="700" alt="主界面">
+  <img src="screenshots/main.png" width="700" alt="Main window">
   <br>
-  <em>主界面 — 深色主题 + 过滤 + 多字符串面板</em>
+  <em>Main window — dark theme, filter bar, multi-string panel</em>
 </p>
 
 <p align="center">
-  <img src="screenshots/multi-strings.png" width="600" alt="多字符串窗口">
+  <img src="screenshots/multi-strings.png" width="600" alt="Multi-string window">
   <br>
-  <em>多字符串发送窗口 — 拖拽排序 + 独立 Hex/延迟控制 + 循环发送</em>
+  <em>Multi-string sender — drag-to-reorder, per-item Hex/delay, loop mode</em>
 </p>
 
-## 快速开始
+## Quick Start
 
 ```bash
 npm install
-npm run tauri dev    # 开发模式
-npm run tauri build  # 生产构建
+npm run tauri dev    # development
+npm run tauri build  # production build
 ```
 
-## 技术栈
+## Tech Stack
 
-| 层 | 技术 |
+| Layer | Technology |
 |---|---|
-| 桌面框架 | Tauri v2 |
-| 后端 | Rust — serialport / encoding_rs / crc |
-| 前端 | 原生 HTML / CSS / JS |
-| 构建 | Vite + @tauri-apps/cli |
+| Desktop framework | Tauri v2 |
+| Backend | Rust — serialport / encoding_rs / crc |
+| Frontend | Vanilla HTML / CSS / JS |
+| Build | Vite + @tauri-apps/cli |
 
-## 下载
+## Download
 
-访问 [Releases](https://github.com/Martlet-Tech/Zcom/releases) 页面下载最新版本。
+Grab the latest build from the [Releases](https://github.com/Martlet-Tech/Zcom/releases) page.
 
 ## License
 
