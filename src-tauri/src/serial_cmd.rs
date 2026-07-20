@@ -25,7 +25,7 @@ pub async fn list_ports() -> Result<Vec<PortInfo>, String> {
                     format!("{} {}", manufacturer, product).trim().to_string()
                 }
                 serialport::SerialPortType::BluetoothPort => "Bluetooth".into(),
-                _ => String::new(),
+                _ => get_port_description(&p.port_name).unwrap_or_default(),
             };
             PortInfo {
                 name: p.port_name,
@@ -34,6 +34,31 @@ pub async fn list_ports() -> Result<Vec<PortInfo>, String> {
         })
         .collect();
     Ok(infos)
+}
+
+fn get_port_description(name: &str) -> Option<String> {
+    let output = std::process::Command::new("wmic")
+        .args([
+            "path", "Win32_SerialPort",
+            "where", &format!("DeviceID='{}'", name),
+            "get", "Name", "/format:value",
+        ])
+        .output()
+        .ok()?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for line in stdout.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        if let Some(value) = line.strip_prefix("Name=") {
+            let value = value.trim().trim_matches('"');
+            if !value.is_empty() {
+                return Some(value.to_string());
+            }
+        }
+    }
+    None
 }
 
 #[tauri::command]
