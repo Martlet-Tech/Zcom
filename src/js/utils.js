@@ -24,6 +24,8 @@ const defaults = {
   theme: 'dark',
   panelHidden: false,
   baudRate: 115200,
+  lineEnding: 'crlf',
+  receiveNewline: 'auto',
 };
 
 export async function getSettings() {

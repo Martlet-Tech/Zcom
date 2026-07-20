@@ -130,11 +130,11 @@
       <div class="dialog-body">
         <div class="setting-row">
           <label>界面配色:</label>
-          <div class="theme-radios">
-            <label><input type="radio" name="theme" value="dark" checked /> 深色</label>
-            <label><input type="radio" name="theme" value="light" /> 浅色</label>
-            <label><input type="radio" name="theme" value="system" /> 系统</label>
-            <label><input type="radio" name="theme" value="high-contrast" /> 高对比</label>
+          <div class="segmented" data-setting="theme">
+            <button class="segmented-btn active" data-value="dark">深色</button>
+            <button class="segmented-btn" data-value="light">浅色</button>
+            <button class="segmented-btn" data-value="system">系统</button>
+            <button class="segmented-btn" data-value="high-contrast">高对比</button>
           </div>
         </div>
         <div class="setting-row">
@@ -161,6 +161,23 @@
         <div class="setting-row">
           <label>背景色:</label>
           <input type="color" id="setting-bg-color" value="#1a1a2e" />
+        </div>
+        <div class="setting-row">
+          <label>发送换行符:</label>
+          <div class="segmented" data-setting="lineEnding">
+            <button class="segmented-btn" data-value="none">无</button>
+            <button class="segmented-btn" data-value="cr">CR</button>
+            <button class="segmented-btn" data-value="lf">LF</button>
+            <button class="segmented-btn active" data-value="crlf">CR+LF</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <label>接收换行策略:</label>
+          <div class="segmented" data-setting="receiveNewline">
+            <button class="segmented-btn active" data-value="auto">自动拆分</button>
+            <button class="segmented-btn" data-value="chunks">原始分块</button>
+            <button class="segmented-btn" data-value="stream">连续流</button>
+          </div>
         </div>
       </div>
       <div class="dialog-footer">

@@ -7,6 +7,9 @@ let portOpen = false;
 let fileSending = false;
 let fileSendAbort = false;
 let selectedFilePath = null;
+let lineEnding = 'crlf';
+
+const LINE_ENDING_MAP = { none: '', cr: '\r', lf: '\n', crlf: '\r\n' };
 
 export async function initBottom() {
   const fileOpenBtn = document.getElementById('btn-file-open');
@@ -23,6 +26,7 @@ export async function initBottom() {
   const checksumResult = document.getElementById('checksum-result');
 
   const saved = await getSettings();
+  lineEnding = saved.lineEnding || 'crlf';
   sendText.value = saved.sendText || '';
   chkHexSend.checked = saved.hexSend || false;
   chkChecksum.checked = saved.checksumOn || false;
@@ -140,6 +144,10 @@ export async function initBottom() {
     if (chkChecksum.checked) calcChecksum();
   });
 
+  document.addEventListener('line-ending-changed', (e) => {
+    lineEnding = e.detail.lineEnding;
+  });
+
   sendBtn.addEventListener('click', async () => {
     if (!portOpen) return;
     let text = sendText.value;
@@ -147,6 +155,10 @@ export async function initBottom() {
 
     const hexMode = chkHexSend.checked;
     const encoding = document.getElementById('encoding-select')?.value || 'utf-8';
+
+    if (!hexMode && lineEnding !== 'none') {
+      text += LINE_ENDING_MAP[lineEnding] || '';
+    }
 
     if (chkChecksum.checked) {
       const algo = checksumType.value;

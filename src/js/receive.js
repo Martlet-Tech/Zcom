@@ -6,6 +6,7 @@ let autoScroll = true;
 let hexDisplay = false;
 let showTimestamp = true;
 let encoding = 'utf-8';
+let receiveNewline = 'auto';
 let receiveContent = null;
 let receiveArea = null;
 let paused = false;
@@ -17,6 +18,11 @@ let filterRegex = false;
 let filterInput = null;
 let filterCount = null;
 let filterDebounceTimer = null;
+
+let lineBuffer = '';
+let flushTimer = null;
+let lastDirection = 'R';
+const FLUSH_DELAY = 300;
 
 function matchesFilter(text) {
   if (!filterText) return true;
@@ -136,19 +142,70 @@ function appendLine(text) {
   }
 }
 
-export async function appendData(bytes, direction) {
-  let text;
-  if (hexDisplay) {
-    text = bytesToHex(bytes);
-  } else {
-    try {
-      text = await invoke('decode_bytes', { bytes, encoding });
-    } catch {
-      text = new TextDecoder('utf-8', { fatal: false }).decode(new Uint8Array(bytes));
-    }
-  }
-  if (showTimestamp) text = `[${direction}-${timestamp()}] ${text}`;
+function flushBuffer() {
+  if (!lineBuffer) return;
+  const line = showTimestamp ? `[${lastDirection}-${timestamp()}] ${lineBuffer}` : lineBuffer;
+  appendLine(line);
+  lineBuffer = '';
+}
+
+function appendChunkLine(text) {
+  if (showTimestamp) text = `[${lastDirection}-${timestamp()}] ${text}`;
   appendLine(text);
+}
+
+function appendStreamText(text) {
+  if (!receiveContent) return;
+  const last = receiveContent.lastElementChild;
+  if (!last) {
+    appendChunkLine(text);
+    return;
+  }
+  last.textContent += text;
+  if (filterText) {
+    last.style.display = matchesFilter(last.textContent) ? '' : 'none';
+  }
+  if (autoScroll) {
+    receiveArea.scrollTop = receiveArea.scrollHeight;
+  }
+}
+
+export async function appendData(bytes, direction) {
+  lastDirection = direction;
+
+  if (hexDisplay) {
+    appendChunkLine(bytesToHex(bytes));
+    return;
+  }
+
+  let text;
+  try {
+    text = await invoke('decode_bytes', { bytes, encoding });
+  } catch {
+    text = new TextDecoder('utf-8', { fatal: false }).decode(new Uint8Array(bytes));
+  }
+
+  if (receiveNewline === 'chunks') {
+    appendChunkLine(text);
+    return;
+  }
+
+  if (receiveNewline === 'stream') {
+    appendStreamText(text);
+    return;
+  }
+
+  lineBuffer += text;
+
+  const parts = lineBuffer.split(/\r\n|\r|\n/);
+  for (let i = 0; i < parts.length - 1; i++) {
+    const line = showTimestamp ? `[${direction}-${timestamp()}] ${parts[i]}` : parts[i];
+    appendLine(line);
+  }
+  lineBuffer = parts[parts.length - 1];
+
+  clearTimeout(flushTimer);
+  flushTimer = setTimeout(flushBuffer, FLUSH_DELAY);
 }
 
 function appendSentText(text) {
@@ -167,6 +224,11 @@ export async function initReceive() {
   hexDisplay = s.hexDisplay;
   showTimestamp = s.showTimestamp;
   encoding = s.encoding || 'utf-8';
+  receiveNewline = s.receiveNewline || 'auto';
+
+  document.addEventListener('receive-newline-changed', (e) => {
+    receiveNewline = e.detail.receiveNewline;
+  });
 
   receiveArea.addEventListener('scroll', () => {
     const el = receiveArea;
@@ -198,6 +260,8 @@ export function setEncoding(enc) {
 }
 
 export function clearReceive() {
+  lineBuffer = '';
+  clearTimeout(flushTimer);
   if (receiveContent) {
     receiveContent.innerHTML = '';
   }

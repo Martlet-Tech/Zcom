@@ -11,6 +11,50 @@ function setThemeClass(theme) {
     : (theme === 'dark' ? '' : `theme-${theme}`);
 }
 
+function initSegmented(container, value) {
+  const btns = container.querySelectorAll('.segmented-btn');
+  btns.forEach(b => b.classList.toggle('active', b.dataset.value === value));
+}
+
+function readSegmented(container) {
+  const active = container.querySelector('.segmented-btn.active');
+  return active ? active.dataset.value : null;
+}
+
+function setupSegmentedListener(container) {
+  container.addEventListener('click', (e) => {
+    const btn = e.target.closest('.segmented-btn');
+    if (!btn || !btn.dataset.value) return;
+    container.querySelectorAll('.segmented-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+}
+
+async function loadDialogValues() {
+  const ss = await getSettings();
+  document.getElementById('setting-font-size').value = ss.fontSize;
+  document.getElementById('setting-receive-font').value = ss.receiveFont;
+  document.getElementById('setting-receive-size').value = ss.receiveSize;
+  document.getElementById('setting-receive-color').value = ss.receiveColor;
+  document.getElementById('setting-bg-color').value = ss.bgColor;
+  const segTheme = document.querySelector('.segmented[data-setting="theme"]');
+  const segLineEnd = document.querySelector('.segmented[data-setting="lineEnding"]');
+  const segReceive = document.querySelector('.segmented[data-setting="receiveNewline"]');
+  if (segTheme) initSegmented(segTheme, ss.theme);
+  if (segLineEnd) initSegmented(segLineEnd, ss.lineEnding);
+  if (segReceive) initSegmented(segReceive, ss.receiveNewline);
+}
+
+function applyStyles(s) {
+  document.documentElement.style.fontSize = s.fontSize + 'px';
+  document.documentElement.style.setProperty('--font-size', s.fontSize + 'px');
+  document.documentElement.style.setProperty('--receive-font', s.receiveFont);
+  document.documentElement.style.setProperty('--receive-size', s.receiveSize + 'px');
+  document.documentElement.style.setProperty('--receive-color', s.receiveColor);
+  document.documentElement.style.setProperty('--receive-bg', s.bgColor);
+  setThemeClass(s.theme);
+}
+
 export async function initSettings() {
   const overlay = document.getElementById('settings-overlay');
   const dialog = document.getElementById('settings-dialog');
@@ -22,24 +66,29 @@ export async function initSettings() {
   const receiveSize = document.getElementById('setting-receive-size');
   const receiveColor = document.getElementById('setting-receive-color');
   const bgColor = document.getElementById('setting-bg-color');
-  const themeRadios = document.querySelectorAll('input[name="theme"]');
+
+  const segTheme = document.querySelector('.segmented[data-setting="theme"]');
+  const segLineEnd = document.querySelector('.segmented[data-setting="lineEnding"]');
+  const segReceive = document.querySelector('.segmented[data-setting="receiveNewline"]');
+
+  setupSegmentedListener(segTheme);
+  setupSegmentedListener(segLineEnd);
+  setupSegmentedListener(segReceive);
 
   const s = await getSettings();
-  fontSize.value = s.fontSize;
-  receiveFont.value = s.receiveFont;
-  receiveSize.value = s.receiveSize;
-  receiveColor.value = s.receiveColor;
-  bgColor.value = s.bgColor;
-  themeRadios.forEach(r => { if (r.value === s.theme) r.checked = true; });
-  setThemeClass(s.theme);
+  applyStyles(s);
+  emit('theme-changed', s.theme);
+  document.dispatchEvent(new CustomEvent('settings-applied', { detail: s }));
+  document.dispatchEvent(new CustomEvent('line-ending-changed', { detail: { lineEnding: s.lineEnding } }));
+  document.dispatchEvent(new CustomEvent('receive-newline-changed', { detail: { receiveNewline: s.receiveNewline } }));
 
   if (systemThemeMedia) {
     systemThemeMedia.removeEventListener('change', systemThemeHandler);
   }
   systemThemeMedia = window.matchMedia('(prefers-color-scheme: light)');
   systemThemeHandler = () => {
-    getSettings().then(s => {
-      if (s.theme === 'system') setThemeClass('system');
+    getSettings().then(ss => {
+      if (ss.theme === 'system') setThemeClass('system');
     });
   };
   systemThemeMedia.addEventListener('change', systemThemeHandler);
@@ -51,41 +100,27 @@ export async function initSettings() {
       receiveSize: parseInt(receiveSize.value) || 14,
       receiveColor: receiveColor.value,
       bgColor: bgColor.value,
+      theme: segTheme ? readSegmented(segTheme) || 'dark' : 'dark',
+      lineEnding: segLineEnd ? readSegmented(segLineEnd) || 'crlf' : 'crlf',
+      receiveNewline: segReceive ? readSegmented(segReceive) || 'auto' : 'auto',
     };
-    let theme = 'dark';
-    themeRadios.forEach(r => { if (r.checked) theme = r.value; });
-    settings.theme = theme;
 
     const merged = { ...(await getSettings()), ...settings };
     await saveSettings(merged);
-    document.documentElement.style.fontSize = settings.fontSize + 'px';
-    document.documentElement.style.setProperty('--font-size', settings.fontSize + 'px');
-    document.documentElement.style.setProperty('--receive-font', settings.receiveFont);
-    document.documentElement.style.setProperty('--receive-size', settings.receiveSize + 'px');
-    document.documentElement.style.setProperty('--receive-color', settings.receiveColor);
-    document.documentElement.style.setProperty('--receive-bg', settings.bgColor);
-    setThemeClass(theme);
-    emit('theme-changed', theme);
+    applyStyles(settings);
+    emit('theme-changed', settings.theme);
     document.dispatchEvent(new CustomEvent('settings-applied', { detail: settings }));
+    document.dispatchEvent(new CustomEvent('line-ending-changed', { detail: { lineEnding: settings.lineEnding } }));
+    document.dispatchEvent(new CustomEvent('receive-newline-changed', { detail: { receiveNewline: settings.receiveNewline } }));
   }
 
-  function open() {
-    loadValues();
+  async function open() {
+    await loadDialogValues();
     overlay.classList.remove('hidden');
   }
 
   function close() {
     overlay.classList.add('hidden');
-  }
-
-  async function loadValues() {
-    const s = await getSettings();
-    fontSize.value = s.fontSize;
-    receiveFont.value = s.receiveFont;
-    receiveSize.value = s.receiveSize;
-    receiveColor.value = s.receiveColor;
-    bgColor.value = s.bgColor;
-    themeRadios.forEach(r => { if (r.value === s.theme) r.checked = true; });
   }
 
   document.addEventListener('open-settings', open);
@@ -99,6 +134,4 @@ export async function initSettings() {
     await applySettings();
     close();
   });
-
-  applySettings();
 }
