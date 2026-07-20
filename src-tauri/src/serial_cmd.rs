@@ -43,6 +43,8 @@ pub async fn open_port(
     path: String,
     baud: u32,
 ) -> Result<(), String> {
+    let _guard = state.op_lock.lock().await;
+
     if state.connected.load(Ordering::SeqCst) {
         return Err("Port already open".into());
     }
@@ -109,12 +111,16 @@ pub async fn open_port(
 pub async fn close_port(
     state: tauri::State<'_, SerialState>,
 ) -> Result<(), String> {
+    let _guard = state.op_lock.lock().await;
+
     state.stop_reading.store(true, Ordering::SeqCst);
     state.connected.store(false, Ordering::SeqCst);
 
     let handle = state.read_handle.lock().await.take();
     if let Some(h) = handle {
-        let _ = h.await;
+        if let Err(e) = h.await {
+            log::error!("Read task panicked: {:?}", e);
+        }
     }
 
     let mut port = state.port.lock().await;
@@ -151,6 +157,9 @@ pub async fn send_data(
         encode_text(&data, enc)
     };
 
+    if !state.connected.load(Ordering::SeqCst) {
+        return Err("Port not open".into());
+    }
     let mut port = state.port.lock().await;
     let port = port.as_mut().ok_or("Port not open")?;
     port.write_all(&bytes).map_err(|e| format!("Write error: {}", e))?;
@@ -182,6 +191,9 @@ pub async fn send_data_raw(
         bytes
     };
 
+    if !state.connected.load(Ordering::SeqCst) {
+        return Err("Port not open".into());
+    }
     let mut port = state.port.lock().await;
     let port = port.as_mut().ok_or("Port not open")?;
     port.write_all(&bytes).map_err(|e| format!("Write error: {}", e))?;
@@ -194,6 +206,9 @@ pub async fn send_raw_bytes(
     state: tauri::State<'_, SerialState>,
     bytes: Vec<u8>,
 ) -> Result<(), String> {
+    if !state.connected.load(Ordering::SeqCst) {
+        return Err("Port not open".into());
+    }
     let mut port = state.port.lock().await;
     let port = port.as_mut().ok_or("Port not open")?;
     port.write_all(&bytes).map_err(|e| format!("Write error: {}", e))?;

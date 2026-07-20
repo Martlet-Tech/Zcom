@@ -10,6 +10,7 @@ pub struct SerialState {
     pub tx_bytes: Arc<AtomicU64>,
     pub rx_bytes: Arc<AtomicU64>,
     pub connected: Arc<AtomicBool>,
+    pub op_lock: Mutex<()>,
 }
 
 impl SerialState {
@@ -22,6 +23,7 @@ impl SerialState {
             tx_bytes: Arc::new(AtomicU64::new(0)),
             rx_bytes: Arc::new(AtomicU64::new(0)),
             connected: Arc::new(AtomicBool::new(false)),
+            op_lock: Mutex::new(()),
         }
     }
 }

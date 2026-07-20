@@ -41,6 +41,7 @@ export async function initStatusBar() {
     const s = await getSettings();
     s.encoding = encSelect.value;
     await saveSettings(s);
+    document.dispatchEvent(new CustomEvent('encoding-change', { detail: { encoding: encSelect.value } }));
   });
 
   setTimeout(() => {

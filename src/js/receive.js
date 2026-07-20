@@ -9,6 +9,7 @@ let encoding = 'utf-8';
 let receiveContent = null;
 let receiveArea = null;
 let paused = false;
+const MAX_LINES = 10000;
 
 function appendLine(text) {
   if (!receiveContent) return;
@@ -16,6 +17,11 @@ function appendLine(text) {
   line.className = 'receive-line';
   line.textContent = text;
   receiveContent.appendChild(line);
+
+  while (receiveContent.children.length > MAX_LINES) {
+    receiveContent.removeChild(receiveContent.firstChild);
+  }
+
   if (autoScroll) {
     receiveArea.scrollTop = receiveArea.scrollHeight;
   }
@@ -70,6 +76,14 @@ export async function initReceive() {
   document.addEventListener('send-echo', (e) => {
     appendSentText(e.detail.text);
   });
+
+  document.addEventListener('encoding-change', (e) => {
+    encoding = e.detail.encoding;
+  });
+}
+
+export function setEncoding(enc) {
+  encoding = enc;
 }
 
 export function clearReceive() {

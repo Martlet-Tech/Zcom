@@ -6,7 +6,7 @@ import { writeTextFile, readTextFile } from '@tauri-apps/plugin-fs';
 import { parseHexString, getSettings } from './utils.js';
 
 let items = [];
-let loopRunning = false;
+let loopActive = false;
 let loopAbort = false;
 let draggedItem = null;
 
@@ -50,7 +50,12 @@ export async function initMulti() {
   try {
     const saved = await invoke('load_multi_strings');
     if (saved && saved.length > 0) {
-      saved.forEach(d => addItem(d.text || '', d.delay || 100, d.hex || false));
+      saved.forEach(d => {
+        const text = typeof d.text === 'string' ? d.text : '';
+        const delay = Math.min(60000, Math.max(0, parseInt(d.delay, 10) || 100));
+        const hex = d.hex === true;
+        addItem(text, delay, hex);
+      });
       return;
     }
   } catch (e) {
@@ -71,9 +76,9 @@ async function saveItems() {
 function addItem(text, delay, hex) {
   const item = {
     id: Date.now() + Math.random(),
-    text: text || '',
-    delay: delay !== undefined ? delay : 100,
-    hex: hex || false,
+    text: String(text || ''),
+    delay: Math.min(60000, Math.max(0, parseInt(delay, 10) || 100)),
+    hex: hex === true,
   };
   items.push(item);
   renderItem(item);
@@ -129,6 +134,19 @@ function startDrag(item, div) {
   draggedItem = item;
   div.classList.add('dragging');
 
+  function cleanup() {
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+    window.removeEventListener('blur', cleanup);
+    div.classList.remove('dragging');
+    document.querySelectorAll('.multi-item.drag-over').forEach(el => el.classList.remove('drag-over'));
+    if (draggedItem) {
+      draggedItem = null;
+      renderAll();
+      saveItems();
+    }
+  }
+
   function onMouseMove(e) {
     const el = document.elementFromPoint(e.clientX, e.clientY);
     if (!el) return;
@@ -140,9 +158,6 @@ function startDrag(item, div) {
   }
 
   function onMouseUp(e) {
-    document.removeEventListener('mousemove', onMouseMove);
-    document.removeEventListener('mouseup', onMouseUp);
-
     const el = document.elementFromPoint(e.clientX, e.clientY);
     const targetDiv = el?.closest('.multi-item');
     if (targetDiv && targetDiv !== div) {
@@ -156,16 +171,12 @@ function startDrag(item, div) {
         }
       }
     }
-
-    div.classList.remove('dragging');
-    document.querySelectorAll('.multi-item.drag-over').forEach(el => el.classList.remove('drag-over'));
-    draggedItem = null;
-    renderAll();
-    saveItems();
+    cleanup();
   }
 
   document.addEventListener('mousemove', onMouseMove);
   document.addEventListener('mouseup', onMouseUp);
+  window.addEventListener('blur', cleanup);
 }
 
 function renderAll() {
@@ -182,14 +193,9 @@ function deleteAll() {
 async function sendItem(item) {
   if (!item.text) return;
   try {
-    if (item.hex) {
-      const bytes = parseHexString(item.text);
-      await invoke('send_raw_bytes', { bytes });
-    } else {
-      const encoder = new TextEncoder();
-      const bytes = Array.from(encoder.encode(item.text));
-      await invoke('send_raw_bytes', { bytes });
-    }
+    const s = await getSettings();
+    const encoding = s.encoding || 'utf-8';
+    await invoke('send_data_raw', { data: item.text, hexMode: item.hex, encoding });
   } catch (e) {
     console.error('Multi send error:', e);
   }
@@ -222,7 +228,12 @@ async function importJson() {
       if (!Array.isArray(data)) return;
       items = [];
       document.getElementById('multi-list').innerHTML = '';
-      data.forEach(d => addItem(d.text || '', d.delay || 100, d.hex || false));
+      data.forEach(d => {
+        const text = typeof d.text === 'string' ? d.text : '';
+        const delay = Math.min(60000, Math.max(0, parseInt(d.delay, 10) || 100));
+        const hex = d.hex === true;
+        addItem(text, delay, hex);
+      });
       saveItems();
     }
   } catch (e) {
@@ -231,13 +242,13 @@ async function importJson() {
 }
 
 async function startLoop() {
-  if (loopRunning) return;
-  loopRunning = true;
+  if (loopActive) return;
+  loopActive = true;
   loopAbort = false;
 
-  while (loopRunning && !loopAbort) {
+  while (loopActive && !loopAbort) {
     for (const item of items) {
-      if (!loopRunning || loopAbort) break;
+      if (!loopActive || loopAbort) break;
       if (item.text) {
         await sendItem(item);
         if (item.delay > 0) {
@@ -248,14 +259,14 @@ async function startLoop() {
     if (items.length === 0) break;
   }
 
-  loopRunning = false;
+  loopActive = false;
   const chk = document.getElementById('multi-chk-loop');
   if (chk) chk.checked = false;
 }
 
 function stopLoop() {
   loopAbort = true;
-  loopRunning = false;
+  loopActive = false;
 }
 
 function applyThemeClass(theme) {
