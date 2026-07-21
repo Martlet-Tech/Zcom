@@ -65,6 +65,13 @@
       <div id="receive-content"></div>
     </div>
 
+    <div id="send-drag-handle" class="drag-handle"></div>
+    <div id="send-area" class="bottom-row" data-view-group="send">
+      <button id="btn-clear-receive" class="small-btn">🗑 清空</button>
+      <textarea id="send-text" class="send-textarea" placeholder="输入要发送的数据..."></textarea>
+      <button id="btn-send" class="send-btn" disabled>发送</button>
+    </div>
+
     <div id="filter-bar" data-view-group="filter">
       <span class="filter-icon">🔍</span>
       <input type="text" id="filter-input" class="filter-input" placeholder="过滤..." spellcheck="false" />
@@ -94,11 +101,6 @@
         <input type="text" id="checksum-pos" class="small-input" value="+0" disabled />
         <span class="label">校验码:</span>
         <span id="checksum-result" class="checksum-value">—</span>
-      </div>
-      <div id="send-area" class="bottom-row" data-view-group="send">
-        <button id="btn-clear-receive" class="small-btn">🗑 清空</button>
-        <textarea id="send-text" class="send-textarea" rows="4" placeholder="输入要发送的数据..."></textarea>
-        <button id="btn-send" class="send-btn" disabled>发送</button>
       </div>
     </div>
   </div>

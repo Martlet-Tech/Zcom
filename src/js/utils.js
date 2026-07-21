@@ -27,6 +27,7 @@ const defaults = {
   lineEnding: 'crlf',
   receiveNewline: 'auto',
   foldRepeatCount: 5,
+  sendAreaHeight: 80,
 };
 
 export async function getSettings() {

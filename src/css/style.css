@@ -465,28 +465,51 @@ select:focus, input:focus, textarea:focus {
   min-width: 60px;
 }
 
+/* ===== Drag Handle ===== */
+#send-drag-handle {
+  height: 4px;
+  cursor: ns-resize;
+  flex-shrink: 0;
+  background: transparent;
+  position: relative;
+  z-index: 10;
+  transition: background 0.15s;
+}
+#send-drag-handle:hover,
+#send-drag-handle.active {
+  background: var(--accent);
+}
+
 /* ===== Send Area ===== */
 #send-area {
   display: flex;
   align-items: stretch;
   gap: 6px;
+  flex-shrink: 0;
+  min-height: 28px;
 }
 #send-area .small-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  align-self: center;
+  padding: 3px 10px;
 }
 .send-textarea {
   flex: 1;
   resize: none;
-  padding: 4px 6px;
+  padding: 3px 6px;
   font-family: 'Consolas', monospace;
   font-size: 13px;
-  line-height: 1.4;
+  line-height: 1.6;
   min-height: 0;
 }
 .send-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  padding: 6px 20px;
+  padding: 3px 20px;
   font-size: 14px;
   font-weight: 600;
   background: var(--accent2);
@@ -789,21 +812,6 @@ select:focus, input:focus, textarea:focus {
 }
 .view-hidden {
   display: none !important;
-}
-
-/* ===== Send Area Compact Mode ===== */
-.send-mode-compact #send-text {
-  height: auto;
-  max-height: 28px;
-  overflow-y: hidden;
-  resize: none;
-  padding: 3px 6px;
-  line-height: 1.6;
-}
-.send-mode-compact .send-btn {
-  min-height: auto;
-  padding: 3px 14px;
-  font-size: 12px;
 }
 
 /* ===== Utility ===== */

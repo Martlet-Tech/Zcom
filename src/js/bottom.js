@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile, readFile } from '@tauri-apps/plugin-fs';
-import { parseHexString, bytesToHex, getSettings, saveSettings } from './utils.js';
+import { getSettings, saveSettings } from './utils.js';
 
 let portOpen = false;
 let fileSending = false;
@@ -11,6 +11,8 @@ let lineEnding = 'crlf';
 
 const LINE_ENDING_MAP = { none: '', cr: '\r', lf: '\n', crlf: '\r\n' };
 
+const MIN_SEND_HEIGHT = 32;
+
 export async function initBottom() {
   const fileOpenBtn = document.getElementById('btn-file-open');
   const filePathEl = document.getElementById('file-path');
@@ -19,6 +21,8 @@ export async function initBottom() {
   const clearBtn = document.getElementById('btn-clear-receive');
   const sendBtn = document.getElementById('btn-send');
   const sendText = document.getElementById('send-text');
+  const dragHandle = document.getElementById('send-drag-handle');
+  const sendArea = document.getElementById('send-area');
   const chkHexSend = document.getElementById('chk-hex-send');
   const chkChecksum = document.getElementById('chk-checksum');
   const checksumType = document.getElementById('checksum-type');
@@ -35,6 +39,43 @@ export async function initBottom() {
   checksumType.disabled = !saved.checksumOn;
   checksumPos.disabled = !saved.checksumOn;
   if (saved.checksumOn) calcChecksum();
+
+  // restore send area height
+  if (saved.sendAreaHeight) {
+    sendArea.style.height = saved.sendAreaHeight + 'px';
+  }
+
+  // drag to resize send area
+  let dragging = false;
+  let startY = 0;
+  let startH = 0;
+
+  dragHandle.addEventListener('mousedown', (e) => {
+    dragging = true;
+    startY = e.clientY;
+    startH = sendArea.offsetHeight;
+    dragHandle.classList.add('active');
+    document.body.style.cursor = 'ns-resize';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    const h = Math.max(MIN_SEND_HEIGHT, startH + (startY - e.clientY));
+    sendArea.style.height = h + 'px';
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    dragHandle.classList.remove('active');
+    document.body.style.cursor = '';
+    const h = sendArea.offsetHeight;
+    getSettings().then(s => {
+      s.sendAreaHeight = h;
+      saveSettings(s);
+    });
+  });
 
   document.addEventListener('port-state-change', (e) => {
     portOpen = e.detail.open;
@@ -180,9 +221,5 @@ export async function initBottom() {
     if (e.key === 'Enter' && e.ctrlKey) {
       sendBtn.click();
     }
-  });
-
-  document.addEventListener('send-mode-change', (e) => {
-    // future: adjust send-related UI if needed
   });
 }
