@@ -1,7 +1,7 @@
 use crate::checksum;
 use crate::state::SerialState;
 use std::sync::atomic::Ordering;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tauri::{Emitter, Manager};
 use serde::{Serialize, Deserialize};
 use std::path::PathBuf;
@@ -14,26 +14,32 @@ pub struct PortInfo {
 
 #[tauri::command]
 pub async fn list_ports() -> Result<Vec<PortInfo>, String> {
-    let ports = serialport::available_ports().map_err(|e| e.to_string())?;
+    let ports = serial2::SerialPort::available_ports().map_err(|e| e.to_string())?;
     let infos: Vec<PortInfo> = ports
         .into_iter()
-        .map(|p| {
-            let desc = match &p.port_type {
-                serialport::SerialPortType::UsbPort(info) => {
-                    let product = info.product.as_deref().unwrap_or("");
-                    let manufacturer = info.manufacturer.as_deref().unwrap_or("");
-                    format!("{} {}", manufacturer, product).trim().to_string()
-                }
-                serialport::SerialPortType::BluetoothPort => "Bluetooth".into(),
-                _ => get_port_description(&p.port_name).unwrap_or_default(),
-            };
+        .map(|path| {
+            let name = port_name_from_path(&path);
+            let desc = get_port_description(&name).unwrap_or_else(|| name.clone());
             PortInfo {
-                name: p.port_name,
+                name,
                 description: desc,
             }
         })
         .collect();
     Ok(infos)
+}
+
+fn port_name_from_path(path: &std::path::Path) -> String {
+    #[cfg(windows)]
+    {
+        let s = path.to_string_lossy();
+        let s = s.trim_start_matches("\\\\.\\");
+        s.to_string()
+    }
+    #[cfg(not(windows))]
+    {
+        path.to_string_lossy().to_string()
+    }
 }
 
 fn decode_oem_text(bytes: &[u8]) -> String {
@@ -110,17 +116,13 @@ async fn open_port_inner(
         return Err("Port already open".into());
     }
 
-    let port = serialport::new(path, baud)
-        .data_bits(serialport::DataBits::Eight)
-        .flow_control(serialport::FlowControl::None)
-        .parity(serialport::Parity::None)
-        .stop_bits(serialport::StopBits::One)
-        .open()
+    let port = serial2::SerialPort::open(path, baud)
         .map_err(|e| format!("Failed to open {}: {}", path, e))?;
 
-    let mut reader = port.try_clone().map_err(|e| format!("Cannot clone port: {}", e))?;
-    reader.set_timeout(Duration::from_millis(1))
-        .map_err(|e| format!("Cannot set timeout: {}", e))?;
+    let mut reader = port.try_clone()
+        .map_err(|e| format!("Cannot clone port: {}", e))?;
+    reader.set_read_timeout(Duration::from_millis(1))
+        .ok();
 
     *state.port.lock().await = Some(port);
     *state.port_name.lock().await = Some(path.to_string());
@@ -137,30 +139,40 @@ async fn open_port_inner(
     let app_handle = app.clone();
 
     let handle = tokio::task::spawn_blocking(move || {
+        const GAP_TIMEOUT: Duration = Duration::from_millis(5);
         let mut buf = [0u8; 4096];
-        let mut serial = reader;
+        let mut acc: Vec<u8> = Vec::new();
+        let mut last_time = Instant::now();
+
         loop {
             if stop_flag.load(Ordering::SeqCst) {
+                if !acc.is_empty() {
+                    let _ = app_handle.emit("serial-data", acc.clone());
+                }
                 break;
             }
-            match serial.read(&mut buf) {
-                Ok(0) => {
-                    std::thread::sleep(Duration::from_millis(10));
-                    continue;
-                }
-                Ok(n) => {
+            match reader.read(&mut buf) {
+                Ok(n) if n > 0 => {
+                    acc.extend_from_slice(&buf[..n]);
+                    last_time = Instant::now();
                     rx_count.fetch_add(n as u64, Ordering::SeqCst);
-                    let data = buf[..n].to_vec();
-                    let _ = app_handle.emit("serial-data", data);
+                    if acc.len() >= 4096 {
+                        let data = std::mem::take(&mut acc);
+                        let _ = app_handle.emit("serial-data", data);
+                    }
                 }
                 Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => {
+                    if !acc.is_empty() && last_time.elapsed() >= GAP_TIMEOUT {
+                        let data = std::mem::take(&mut acc);
+                        let _ = app_handle.emit("serial-data", data);
+                    }
                     std::thread::sleep(Duration::from_millis(10));
-                    continue;
                 }
                 Err(e) => {
                     log::error!("Serial read error: {}", e);
                     break;
                 }
+                _ => {}
             }
         }
         connected_flag.store(false, Ordering::SeqCst);
@@ -196,8 +208,8 @@ async fn close_port_inner(
     }
 
     let mut port = state.port.lock().await;
-    if let Some(ref mut p) = *port {
-        let _ = p.clear(serialport::ClearBuffer::All);
+    if let Some(ref p) = *port {
+        let _ = p.discard_buffers();
     }
     *port = None;
     *state.port_name.lock().await = None;

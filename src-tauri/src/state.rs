@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 pub struct SerialState {
-    pub port: Arc<Mutex<Option<Box<dyn serialport::SerialPort>>>>,
+    pub port: Arc<Mutex<Option<serial2::SerialPort>>>,
     pub port_name: Arc<Mutex<Option<String>>>,
     pub baud_rate: Arc<AtomicU32>,
     pub suppress_close_event: Arc<AtomicBool>,

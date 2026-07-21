@@ -235,7 +235,13 @@ function showLineContextMenu(e, line) {
   copyItem.className = 'context-item';
   copyItem.textContent = '复制';
   copyItem.addEventListener('click', () => {
-    navigator.clipboard.writeText(line.textContent);
+    const sel = window.getSelection();
+    const selText = sel ? sel.toString().trim() : '';
+    if (selText.length > 0) {
+      navigator.clipboard.writeText(selText);
+    } else {
+      navigator.clipboard.writeText(line.textContent);
+    }
     dismissContextMenu();
   });
   contextMenu.appendChild(copyItem);
