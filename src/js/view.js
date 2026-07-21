@@ -1,4 +1,4 @@
-import { getSettings, saveSettings } from './utils.js';
+import { getSettings, patchSettings } from './utils.js';
 
 const VIEW_GROUPS = [
   { id: 'filter', label: '过滤栏' },
@@ -12,7 +12,7 @@ export async function initViewMenu() {
   const dd = document.getElementById('view-dropdown');
 
   const saved = await getSettings();
-  const hiddenGroups = (saved.viewHiddenGroups || []).filter(id => id !== 'send');
+  const hiddenGroups = saved.viewHiddenGroups || [];
 
   function render() {
     dd.innerHTML = '';
@@ -40,10 +40,8 @@ export async function initViewMenu() {
   }
 
   async function saveViewSettings() {
-    const s = await getSettings();
-    s.viewHiddenGroups = hiddenGroups;
-    delete s.sendMode;
-    await saveSettings(s);
+    const partial = { viewHiddenGroups: [...hiddenGroups] };
+    await patchSettings(partial);
   }
 
   render();

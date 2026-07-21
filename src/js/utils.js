@@ -22,7 +22,6 @@ const defaults = {
   checksumPos: '+0',
   encoding: 'utf-8',
   theme: 'dark',
-  panelHidden: false,
   baudRate: 115200,
   lineEnding: 'crlf',
   receiveNewline: 'auto',
@@ -44,6 +43,12 @@ export async function saveSettings(settings) {
   const store = await getStore();
   await store.set('settings', settings);
   await store.save();
+}
+
+export async function patchSettings(partial) {
+  const s = await getSettings();
+  Object.assign(s, partial);
+  await saveSettings(s);
 }
 
 export function parseHexString(s) {

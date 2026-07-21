@@ -1,7 +1,9 @@
 import { invoke } from '@tauri-apps/api/core';
-import { getSettings, saveSettings, formatByteCount } from './utils.js';
+import { getSettings, patchSettings, formatByteCount } from './utils.js';
 
 export async function initStatusBar() {
+  let portConnected = false;
+
   const chkHexSend = document.getElementById('chk-hex-send');
   const chkHexDisplay = document.getElementById('chk-hex-display');
   const chkTimestamp = document.getElementById('chk-timestamp');
@@ -10,6 +12,10 @@ export async function initStatusBar() {
   const statRx = document.getElementById('stat-rx');
   const portInfo = document.getElementById('port-info');
 
+  document.addEventListener('port-state-change', (e) => {
+    portConnected = e.detail.open;
+  });
+
   const saved = await getSettings();
   chkHexDisplay.checked = saved.hexDisplay;
   chkTimestamp.checked = saved.showTimestamp;
@@ -17,30 +23,22 @@ export async function initStatusBar() {
   encSelect.value = saved.encoding || 'utf-8';
 
   chkHexSend.addEventListener('change', async () => {
-    const s = await getSettings();
-    s.hexSend = chkHexSend.checked;
-    await saveSettings(s);
+    await patchSettings({ hexSend: chkHexSend.checked });
     document.dispatchEvent(new CustomEvent('hex-send-change', { detail: { on: chkHexSend.checked } }));
   });
 
   chkHexDisplay.addEventListener('change', async () => {
-    const s = await getSettings();
-    s.hexDisplay = chkHexDisplay.checked;
-    await saveSettings(s);
+    await patchSettings({ hexDisplay: chkHexDisplay.checked });
     document.dispatchEvent(new CustomEvent('hex-display-change', { detail: { on: chkHexDisplay.checked } }));
   });
 
   chkTimestamp.addEventListener('change', async () => {
-    const s = await getSettings();
-    s.showTimestamp = chkTimestamp.checked;
-    await saveSettings(s);
+    await patchSettings({ showTimestamp: chkTimestamp.checked });
     document.dispatchEvent(new CustomEvent('timestamp-change', { detail: { on: chkTimestamp.checked } }));
   });
 
   encSelect.addEventListener('change', async () => {
-    const s = await getSettings();
-    s.encoding = encSelect.value;
-    await saveSettings(s);
+    await patchSettings({ encoding: encSelect.value });
     document.dispatchEvent(new CustomEvent('encoding-change', { detail: { encoding: encSelect.value } }));
   });
 
@@ -50,15 +48,12 @@ export async function initStatusBar() {
   }, 0);
 
   setInterval(async () => {
+    if (!portConnected) return;
     try {
       const info = await invoke('get_port_info');
       statTx.textContent = `Tx: ${formatByteCount(info.tx)}`;
       statRx.textContent = `Rx: ${formatByteCount(info.rx)}`;
-      if (info.connected) {
-        portInfo.innerHTML = `${info.name} 已连接 ${info.baud} ${info.dataBits}N${info.stopBits}`;
-      } else {
-        portInfo.innerHTML = '未连接';
-      }
+      portInfo.innerHTML = `${info.name} 已连接 ${info.baud} ${info.dataBits}N${info.stopBits}`;
     } catch {
       // ignore
     }

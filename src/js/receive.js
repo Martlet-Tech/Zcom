@@ -9,14 +9,13 @@ let encoding = 'utf-8';
 let receiveNewline = 'auto';
 let receiveContent = null;
 let receiveArea = null;
-let paused = false;
 const MAX_LINES = 10000;
 
 let filterText = '';
 let filterCaseSensitive = false;
 let filterRegex = false;
 let filterInput = null;
-let filterCount = null;
+
 let filterDebounceTimer = null;
 
 let lastDirection = 'R';
@@ -32,7 +31,6 @@ let repeatCount = 0;
 let prevRaw = '';
 
 let contextMenu = null;
-let contextTarget = null;
 
 function matchesFilter(text) {
   if (!filterText) return true;
@@ -68,14 +66,6 @@ function applyFilter() {
     if (matches) matchCount++;
   }
 
-  if (!filterCount) return;
-  if (filterText) {
-    filterCount.textContent = `${matchCount}/${lines.length}`;
-    filterCount.classList.toggle('no-match', matchCount === 0);
-  } else {
-    filterCount.textContent = '';
-    filterCount.classList.remove('no-match');
-  }
 }
 
 function clearFilter() {
@@ -146,7 +136,6 @@ function showContextMenu(e, badge) {
       }
     });
   }
-  contextTarget = badge;
   contextMenu.innerHTML = '';
   const copyItem = document.createElement('div');
   copyItem.className = 'context-item';
@@ -229,7 +218,6 @@ function showLineContextMenu(e, line) {
       }
     });
   }
-  contextTarget = line;
   contextMenu.innerHTML = '';
   const copyItem = document.createElement('div');
   copyItem.className = 'context-item';
@@ -260,7 +248,7 @@ function showLineContextMenu(e, line) {
 
 function initFilter() {
   filterInput = document.getElementById('filter-input');
-  filterCount = document.getElementById('filter-count');
+
   const caseBtn = document.getElementById('filter-btn-case');
   const regexBtn = document.getElementById('filter-btn-regex');
   const clearBtn = document.getElementById('filter-btn-clear');
@@ -459,10 +447,8 @@ export async function initReceive() {
     const el = receiveArea;
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 30;
     if (!atBottom && autoScroll) {
-      paused = true;
       autoScroll = false;
     } else if (atBottom && !autoScroll) {
-      paused = false;
       autoScroll = true;
     }
   });
@@ -501,10 +487,6 @@ export function setEncoding(enc) {
 export function clearReceive() {
   if (receiveContent) {
     receiveContent.innerHTML = '';
-  }
-  if (filterCount) {
-    filterCount.textContent = '';
-    filterCount.classList.remove('no-match');
   }
   foldActive = false;
   foldBadge = null;

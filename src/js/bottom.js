@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile, readFile } from '@tauri-apps/plugin-fs';
-import { getSettings, saveSettings } from './utils.js';
+import { getSettings, patchSettings } from './utils.js';
 
 let portOpen = false;
 let fileSending = false;
@@ -71,10 +71,7 @@ export async function initBottom() {
     dragHandle.classList.remove('active');
     document.body.style.cursor = '';
     const h = sendArea.offsetHeight;
-    getSettings().then(s => {
-      s.sendAreaHeight = h;
-      saveSettings(s);
-    });
+    patchSettings({ sendAreaHeight: h });
   });
 
   document.addEventListener('port-state-change', (e) => {
@@ -157,31 +154,23 @@ export async function initBottom() {
     const on = chkChecksum.checked;
     checksumType.disabled = !on;
     checksumPos.disabled = !on;
-    const s = await getSettings();
-    s.checksumOn = on;
-    await saveSettings(s);
+    await patchSettings({ checksumOn: on });
     if (on) calcChecksum();
     else checksumResult.textContent = '—';
   });
 
   checksumType.addEventListener('change', async () => {
-    const s = await getSettings();
-    s.checksumType = checksumType.value;
-    await saveSettings(s);
+    await patchSettings({ checksumType: checksumType.value });
     if (chkChecksum.checked) calcChecksum();
   });
 
   checksumPos.addEventListener('input', async () => {
-    const s = await getSettings();
-    s.checksumPos = checksumPos.value;
-    await saveSettings(s);
+    await patchSettings({ checksumPos: checksumPos.value });
     if (chkChecksum.checked) calcChecksum();
   });
 
   sendText.addEventListener('input', async () => {
-    const s = await getSettings();
-    s.sendText = sendText.value;
-    await saveSettings(s);
+    await patchSettings({ sendText: sendText.value });
     if (chkChecksum.checked) calcChecksum();
   });
 

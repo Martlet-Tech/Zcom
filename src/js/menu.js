@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
-import { getSettings, saveSettings } from './utils.js';
+import { getVersion } from '@tauri-apps/api/app';
+import { getSettings, patchSettings } from './utils.js';
 
 let currentPort = null;
 let portOpen = false;
@@ -38,9 +39,7 @@ export function initMenu() {
     comText.textContent = el.textContent || '— 选择串口 —';
     toggleBtn.disabled = !currentPort;
     closeComDropdown();
-    const s = await getSettings();
-    s.currentPort = val;
-    await saveSettings(s);
+    await patchSettings({ currentPort: val });
   }
 
   async function refresh() {
@@ -135,9 +134,7 @@ export function initMenu() {
 
   baudSelect.addEventListener('change', async () => {
     baudRate = parseInt(baudSelect.value);
-    const s = await getSettings();
-    s.baudRate = baudRate;
-    await saveSettings(s);
+    await patchSettings({ baudRate });
 
     if (portOpen) {
       try {
@@ -190,8 +187,9 @@ export function initMenu() {
     document.dispatchEvent(new CustomEvent('open-settings'));
   });
 
-  aboutBtn.addEventListener('click', () => {
-    alert('ZCOM 串口调试助手 v0.1.0\n基于 Tauri + Rust');
+  aboutBtn.addEventListener('click', async () => {
+    const ver = await getVersion();
+    alert(`ZCOM 串口调试助手 v${ver}\n基于 Tauri + Rust`);
   });
 
   document.addEventListener('port-closed', () => {
