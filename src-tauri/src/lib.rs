@@ -3,6 +3,7 @@ mod checksum;
 mod state;
 
 use state::SerialState;
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -29,7 +30,10 @@ pub fn run() {
             serial_cmd::decode_bytes,
             serial_cmd::set_baud_rate,
         ])
-        .setup(|_app| {
+        .setup(|app| {
+            if let Some(w) = app.get_webview_window("main") {
+                w.show().ok();
+            }
             Ok(())
         })
         .run(tauri::generate_context!())

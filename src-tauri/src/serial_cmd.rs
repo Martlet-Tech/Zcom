@@ -70,7 +70,13 @@ fn decode_oem_text(bytes: &[u8]) -> String {
 }
 
 fn get_port_description(name: &str) -> Option<String> {
-    let output = std::process::Command::new("wmic")
+    let mut cmd = std::process::Command::new("wmic");
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+    let output = cmd
         .args([
             "path", "Win32_SerialPort",
             "where", &format!("DeviceID='{}'", name),
