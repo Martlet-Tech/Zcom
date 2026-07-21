@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicU8};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -13,6 +13,10 @@ pub struct SerialState {
     pub rx_bytes: Arc<AtomicU64>,
     pub connected: Arc<AtomicBool>,
     pub op_lock: Mutex<()>,
+    pub char_size: Arc<AtomicU8>,
+    pub stop_bits: Arc<AtomicU8>,
+    pub parity: Arc<Mutex<String>>,
+    pub flow_control: Arc<Mutex<String>>,
 }
 
 impl SerialState {
@@ -28,6 +32,10 @@ impl SerialState {
             rx_bytes: Arc::new(AtomicU64::new(0)),
             connected: Arc::new(AtomicBool::new(false)),
             op_lock: Mutex::new(()),
+            char_size: Arc::new(AtomicU8::new(8)),
+            stop_bits: Arc::new(AtomicU8::new(1)),
+            parity: Arc::new(Mutex::new("none".to_string())),
+            flow_control: Arc::new(Mutex::new("none".to_string())),
         }
     }
 }

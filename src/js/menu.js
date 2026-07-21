@@ -5,6 +5,10 @@ import { getSettings, patchSettings } from './utils.js';
 let currentPort = null;
 let portOpen = false;
 let baudRate = 115200;
+let charSize = 8;
+let stopBits = 1;
+let parity = 'none';
+let flowControl = 'none';
 
 export function initMenu() {
   const comEl = document.getElementById('com-select');
@@ -91,6 +95,10 @@ export function initMenu() {
     const saved = await getSettings();
     baudRate = saved.baudRate || 115200;
     baudSelect.value = String(baudRate);
+    charSize = saved.charSize || 8;
+    stopBits = saved.stopBits || 1;
+    parity = saved.parity || 'none';
+    flowControl = saved.flowControl || 'none';
   })();
 
   comEl.addEventListener('click', (e) => {
@@ -138,7 +146,14 @@ export function initMenu() {
 
     if (portOpen) {
       try {
-        await invoke('set_baud_rate', { path: currentPort, baud: baudRate });
+        await invoke('set_baud_rate', {
+          path: currentPort,
+          baud: baudRate,
+          charSize: charSize,
+          stopBits: stopBits,
+          parity: parity,
+          flowControl: flowControl,
+        });
       } catch (e) {
         console.error('baud rate change error:', e);
         portOpen = false;
@@ -167,7 +182,14 @@ export function initMenu() {
     } else {
       if (!currentPort) return;
       try {
-        await invoke('open_port', { path: currentPort, baud: baudRate });
+        await invoke('open_port', {
+          path: currentPort,
+          baud: baudRate,
+          charSize: charSize,
+          stopBits: stopBits,
+          parity: parity,
+          flowControl: flowControl,
+        });
         portOpen = true;
         toggleBtn.textContent = '关闭';
         statusEl.className = 'port-status connected';
@@ -185,6 +207,72 @@ export function initMenu() {
 
   settingsBtn.addEventListener('click', () => {
     document.dispatchEvent(new CustomEvent('open-settings'));
+  });
+
+  const serialSettingsBtn = document.getElementById('btn-serial-settings');
+  const ssOverlay = document.getElementById('serial-settings-overlay');
+  const ssDialog = document.getElementById('serial-settings-dialog');
+
+  function setSegmentedValue(id, value) {
+    const container = document.getElementById(id);
+    if (!container) return;
+    container.querySelectorAll('.segmented-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.value === value);
+    });
+  }
+
+  function getSegmentedValue(id) {
+    const container = document.getElementById(id);
+    if (!container) return '';
+    const active = container.querySelector('.segmented-btn.active');
+    return active ? active.dataset.value : '';
+  }
+
+  ['ss-char-size', 'ss-stop-bits', 'ss-parity', 'ss-flow-control'].forEach(id => {
+    const container = document.getElementById(id);
+    if (!container) return;
+    container.querySelectorAll('.segmented-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        container.querySelectorAll('.segmented-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+  });
+
+  function openSerialSettings() {
+    setSegmentedValue('ss-char-size', String(charSize));
+    setSegmentedValue('ss-stop-bits', String(stopBits));
+    setSegmentedValue('ss-parity', parity);
+    setSegmentedValue('ss-flow-control', flowControl);
+    ssOverlay.classList.remove('hidden');
+  }
+
+  function closeSerialSettings() {
+    ssOverlay.classList.add('hidden');
+  }
+
+  serialSettingsBtn.addEventListener('click', openSerialSettings);
+  document.getElementById('btn-serial-settings-close').addEventListener('click', closeSerialSettings);
+  document.getElementById('btn-ss-cancel').addEventListener('click', closeSerialSettings);
+
+  document.getElementById('btn-ss-ok').addEventListener('click', () => {
+    charSize = parseInt(getSegmentedValue('ss-char-size'));
+    stopBits = parseInt(getSegmentedValue('ss-stop-bits'));
+    parity = getSegmentedValue('ss-parity');
+    flowControl = getSegmentedValue('ss-flow-control');
+    patchSettings({ charSize, stopBits, parity, flowControl });
+    closeSerialSettings();
+  });
+
+  document.getElementById('btn-ss-restore').addEventListener('click', () => {
+    setSegmentedValue('ss-char-size', '8');
+    setSegmentedValue('ss-stop-bits', '1');
+    setSegmentedValue('ss-parity', 'none');
+    setSegmentedValue('ss-flow-control', 'none');
+  });
+
+  ssOverlay.addEventListener('click', (e) => {
+    if (e.target === ssOverlay) closeSerialSettings();
   });
 
   aboutBtn.addEventListener('click', async () => {

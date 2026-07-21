@@ -37,6 +37,7 @@
         </div>
         <div class="cs-dropdown" id="com-select-dropdown"></div>
       </div>
+      <button id="btn-serial-settings" class="small-btn" title="串口详细设置">⚙</button>
       <select id="baud-select" class="baud-select">
         <option value="300">300</option>
         <option value="1200">1200</option>
@@ -189,6 +190,57 @@
       <div class="dialog-footer">
         <button id="setting-apply" class="small-btn primary">应用</button>
         <button id="setting-close" class="small-btn">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="serial-settings-overlay" class="overlay hidden">
+    <div id="serial-settings-dialog" class="dialog" style="width:380px;">
+      <div class="dialog-titlebar">
+        <span>串口详细设置</span>
+        <button class="dialog-close title-btn" id="btn-serial-settings-close">✕</button>
+      </div>
+      <div class="dialog-body">
+        <div class="setting-row">
+          <label>数据位:</label>
+          <div class="segmented" id="ss-char-size">
+            <button class="segmented-btn" data-value="5">5</button>
+            <button class="segmented-btn" data-value="6">6</button>
+            <button class="segmented-btn" data-value="7">7</button>
+            <button class="segmented-btn active" data-value="8">8</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <label>停止位:</label>
+          <div class="segmented" id="ss-stop-bits">
+            <button class="segmented-btn active" data-value="1">1</button>
+            <button class="segmented-btn" data-value="2">2</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <label>校验位:</label>
+          <div class="segmented" id="ss-parity">
+            <button class="segmented-btn active" data-value="none">None</button>
+            <button class="segmented-btn" data-value="odd">Odd</button>
+            <button class="segmented-btn" data-value="even">Even</button>
+            <button class="segmented-btn" data-value="mark">Mark</button>
+            <button class="segmented-btn" data-value="space">Space</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <label>流控制:</label>
+          <div class="segmented" id="ss-flow-control">
+            <button class="segmented-btn active" data-value="none">None</button>
+            <button class="segmented-btn" data-value="hardware">Hardware</button>
+            <button class="segmented-btn" data-value="software">Software</button>
+          </div>
+        </div>
+      </div>
+      <div class="dialog-footer">
+        <button id="btn-ss-restore" class="small-btn">恢复默认</button>
+        <div style="flex:1"></div>
+        <button id="btn-ss-cancel" class="small-btn">取消</button>
+        <button id="btn-ss-ok" class="small-btn primary">确定</button>
       </div>
     </div>
   </div>

@@ -1,5 +1,6 @@
 use crate::checksum;
 use crate::state::SerialState;
+use serial2::{CharSize, FlowControl, Parity, StopBits};
 use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 use tauri::{Emitter, Manager};
@@ -107,9 +108,13 @@ pub async fn open_port(
     app: tauri::AppHandle,
     path: String,
     baud: u32,
+    char_size: u8,
+    stop_bits: u8,
+    parity: String,
+    flow_control: String,
 ) -> Result<(), String> {
     let _guard = state.op_lock.lock().await;
-    open_port_inner(&state, &app, &path, baud).await
+    open_port_inner(&state, &app, &path, baud, char_size, stop_bits, &parity, &flow_control).await
 }
 
 async fn open_port_inner(
@@ -117,13 +122,39 @@ async fn open_port_inner(
     app: &tauri::AppHandle,
     path: &str,
     baud: u32,
+    char_size: u8,
+    stop_bits: u8,
+    parity: &str,
+    flow_control: &str,
 ) -> Result<(), String> {
     if state.connected.load(Ordering::SeqCst) {
         return Err("Port already open".into());
     }
 
-    let port = serial2::SerialPort::open(path, baud)
-        .map_err(|e| format!("Failed to open {}: {}", path, e))?;
+    let port = serial2::SerialPort::open(path, |mut s: serial2::Settings| {
+        s.set_baud_rate(baud)?;
+        s.set_char_size(match char_size {
+            5 => CharSize::Bits5,
+            6 => CharSize::Bits6,
+            7 => CharSize::Bits7,
+            _ => CharSize::Bits8,
+        });
+        s.set_stop_bits(match stop_bits {
+            2 => StopBits::Two,
+            _ => StopBits::One,
+        });
+        s.set_parity(match parity {
+            "odd" => Parity::Odd,
+            "even" => Parity::Even,
+            _ => Parity::None,
+        });
+        s.set_flow_control(match flow_control {
+            "hardware" => FlowControl::RtsCts,
+            "software" => FlowControl::XonXoff,
+            _ => FlowControl::None,
+        });
+        Ok(s)
+    }).map_err(|e| format!("Failed to open {}: {}", path, e))?;
 
     let mut reader = port.try_clone()
         .map_err(|e| format!("Cannot clone port: {}", e))?;
@@ -133,6 +164,10 @@ async fn open_port_inner(
     *state.port.lock().await = Some(port);
     *state.port_name.lock().await = Some(path.to_string());
     state.baud_rate.store(baud, Ordering::SeqCst);
+    state.char_size.store(char_size, Ordering::SeqCst);
+    state.stop_bits.store(stop_bits, Ordering::SeqCst);
+    *state.parity.lock().await = parity.to_string();
+    *state.flow_control.lock().await = flow_control.to_string();
     state.connected.store(true, Ordering::SeqCst);
     state.stop_reading.store(false, Ordering::SeqCst);
     state.tx_bytes.store(0, Ordering::SeqCst);
@@ -229,6 +264,10 @@ pub async fn set_baud_rate(
     app: tauri::AppHandle,
     path: String,
     baud: u32,
+    char_size: u8,
+    stop_bits: u8,
+    parity: String,
+    flow_control: String,
 ) -> Result<(), String> {
     let _guard = state.op_lock.lock().await;
 
@@ -236,7 +275,7 @@ pub async fn set_baud_rate(
 
     let result = async {
         close_port_inner(&state).await?;
-        open_port_inner(&state, &app, &path, baud).await
+        open_port_inner(&state, &app, &path, baud, char_size, stop_bits, &parity, &flow_control).await
     }.await;
 
     state.suppress_close_event.store(false, Ordering::SeqCst);
@@ -342,9 +381,9 @@ pub async fn get_port_info(
         "tx": tx,
         "rx": rx,
         "baud": state.baud_rate.load(Ordering::SeqCst),
-        "dataBits": 8,
-        "parity": "None",
-        "stopBits": 1,
+        "dataBits": state.char_size.load(Ordering::SeqCst),
+        "parity": state.parity.lock().await.clone(),
+        "stopBits": state.stop_bits.load(Ordering::SeqCst),
     }))
 }
 

@@ -27,6 +27,10 @@ const defaults = {
   receiveNewline: 'auto',
   foldRepeatCount: 5,
   sendAreaHeight: 80,
+  charSize: 8,
+  stopBits: 1,
+  parity: 'none',
+  flowControl: 'none',
 };
 
 export async function getSettings() {
