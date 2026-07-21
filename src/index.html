@@ -24,6 +24,10 @@
     <div class="menu-left">
       <button id="btn-settings" class="menu-btn">设置</button>
       <button id="btn-about" class="menu-btn">关于</button>
+      <div id="view-menu-wrap" class="view-menu">
+        <button id="btn-view" class="menu-btn">视图 ▾</button>
+        <div id="view-dropdown" class="view-dropdown"></div>
+      </div>
     </div>
     <div class="menu-right">
       <div id="com-select" class="custom-select" tabindex="0">
@@ -61,7 +65,7 @@
       <div id="receive-content"></div>
     </div>
 
-    <div id="filter-bar">
+    <div id="filter-bar" data-view-group="filter">
       <span class="filter-icon">🔍</span>
       <input type="text" id="filter-input" class="filter-input" placeholder="过滤..." spellcheck="false" />
       <button id="filter-btn-case" class="filter-btn" title="大小写敏感">Aa</button>
@@ -70,14 +74,13 @@
       <span id="filter-count" class="filter-count"></span>
     </div>
     <div id="bottom-panel">
-      <div id="file-ops" class="bottom-row">
+      <div id="file-ops" class="bottom-row" data-view-group="file">
         <button id="btn-file-open" class="small-btn">📂 打开文件</button>
         <span id="file-path" class="file-path-label">未选择文件</span>
         <button id="btn-file-send" class="small-btn" disabled>📤 发送文件</button>
         <button id="btn-file-save" class="small-btn">💾 保存接收</button>
-        <button id="btn-clear-receive" class="small-btn">🗑 清空</button>
       </div>
-      <div id="checksum-area" class="bottom-row">
+      <div id="checksum-area" class="bottom-row" data-view-group="checksum">
         <label class="chk-label">
           <input type="checkbox" id="chk-checksum" /> 加校验
         </label>
@@ -92,11 +95,10 @@
         <span class="label">校验码:</span>
         <span id="checksum-result" class="checksum-value">—</span>
       </div>
-      <div id="send-area" class="bottom-row">
+      <div id="send-area" class="bottom-row" data-view-group="send">
+        <button id="btn-clear-receive" class="small-btn">🗑 清空</button>
         <textarea id="send-text" class="send-textarea" rows="4" placeholder="输入要发送的数据..."></textarea>
-        <div class="send-right">
-          <button id="btn-send" class="send-btn" disabled>发送</button>
-        </div>
+        <button id="btn-send" class="send-btn" disabled>发送</button>
       </div>
     </div>
   </div>
@@ -198,6 +200,7 @@
   <script type="module" src="js/receive.js"></script>
   <script type="module" src="js/bottom.js"></script>
   <script type="module" src="js/statusbar.js"></script>
+  <script type="module" src="js/view.js"></script>
   <script type="module" src="js/settings.js"></script>
   <script type="module" src="js/app.js"></script>
 </body>

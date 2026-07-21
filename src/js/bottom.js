@@ -181,4 +181,8 @@ export async function initBottom() {
       sendBtn.click();
     }
   });
+
+  document.addEventListener('send-mode-change', (e) => {
+    // future: adjust send-related UI if needed
+  });
 }

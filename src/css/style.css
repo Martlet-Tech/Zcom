@@ -466,6 +466,15 @@ select:focus, input:focus, textarea:focus {
 }
 
 /* ===== Send Area ===== */
+#send-area {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+#send-area .small-btn {
+  flex-shrink: 0;
+  align-self: center;
+}
 .send-textarea {
   flex: 1;
   resize: none;
@@ -475,19 +484,14 @@ select:focus, input:focus, textarea:focus {
   line-height: 1.4;
   min-height: 0;
 }
-.send-right {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
 .send-btn {
-  height: 100%;
+  flex-shrink: 0;
   padding: 6px 20px;
   font-size: 14px;
   font-weight: 600;
   background: var(--accent2);
   border-color: var(--accent);
-  min-height: 60px;
+  min-width: 60px;
 }
 .send-btn:hover { background: var(--accent); }
 .send-btn:disabled { background: var(--bg2); border-color: var(--border); }
@@ -727,6 +731,79 @@ select:focus, input:focus, textarea:focus {
 #multi-list::-webkit-scrollbar-thumb {
   background: var(--bg3);
   border-radius: 3px;
+}
+
+/* ===== View Menu ===== */
+.view-menu {
+  position: relative;
+  user-select: none;
+  outline: none;
+}
+.view-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 150px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  z-index: 200;
+  display: none;
+  padding: 4px 0;
+  margin-top: 2px;
+}
+.view-menu.open .view-dropdown {
+  display: block;
+}
+.view-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--fg);
+  transition: background 0.1s;
+  white-space: nowrap;
+}
+.view-item:hover {
+  background: var(--bg3);
+}
+.view-item .view-check {
+  width: 14px;
+  text-align: center;
+  flex-shrink: 0;
+  color: var(--fg-dim);
+}
+.view-item.checked .view-check {
+  color: var(--accent);
+}
+.view-item.active-mode .view-check {
+  color: var(--accent);
+}
+.view-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+.view-hidden {
+  display: none !important;
+}
+
+/* ===== Send Area Compact Mode ===== */
+.send-mode-compact #send-text {
+  height: auto;
+  max-height: 28px;
+  overflow-y: hidden;
+  resize: none;
+  padding: 3px 6px;
+  line-height: 1.6;
+}
+.send-mode-compact .send-btn {
+  min-height: auto;
+  padding: 3px 14px;
+  font-size: 12px;
 }
 
 /* ===== Utility ===== */

@@ -4,6 +4,7 @@ import { initMenu } from './menu.js';
 import { initReceive, clearReceive, setHexDisplay, setShowTimestamp, applyReceiveStyle } from './receive.js';
 import { initBottom } from './bottom.js';
 import { initStatusBar } from './statusbar.js';
+import { initViewMenu } from './view.js';
 import { initSettings } from './settings.js';
 import { getSettings, saveSettings } from './utils.js';
 
@@ -15,6 +16,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await initReceive();
   await initBottom();
   await initStatusBar();
+  await initViewMenu();
   await initSettings();
 
   document.addEventListener('clear-receive', clearReceive);
