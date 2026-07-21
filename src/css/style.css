@@ -295,7 +295,7 @@ select:focus, input:focus, textarea:focus {
   font-family: var(--receive-font);
   font-size: var(--receive-size);
   color: var(--receive-color);
-  line-height: 1.5;
+  line-height: 20px; /* must be integer device px at 125%/150%/175% DPI (multiple of 4) */
 }
 #receive-area::-webkit-scrollbar {
   width: 8px;
@@ -319,8 +319,11 @@ select:focus, input:focus, textarea:focus {
   -webkit-user-select: text;
 }
 .receive-line {
-  padding: 1px 0;
-  line-height: 1.5;
+  display: flex;
+  align-items: center;  /* prevent vertical drift when CJK fallback font metrics differ from receive-font */
+  min-height: 20px;
+  padding: 0 4px;
+  line-height: 20px;    /* must match #receive-area line-height */
 }
 .receive-line:hover {
   background: rgba(255,255,255,0.03);
