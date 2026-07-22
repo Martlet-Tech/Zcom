@@ -39,12 +39,12 @@ Issues and PRs welcome.
 ## Features
 
 - 🔥 **MCP (Model Context Protocol) Server** — built-in MCP HTTP server lets AI agents (opencode, Claude Desktop, etc.) read serial data, inspect port status, and send commands in real time. Enable in settings, connect at `http://localhost:9876/mcp`.
-- 🔥 **Auto-scroll** — pauses on manual scroll, resumes at bottom
+- 🔥 **Repeat line folding** — auto-fold identical consecutive lines into <code>[×N]</code>, click to expand, right-click for copy / fold below
 - ⭐ **Serial communication** — auto-enumerate COM ports with device descriptions, hot-plug support
 - ⭐ **Dual-mode I/O** — text / Hex send and receive, switch on the fly
-- ⭐ **Repeat line folding** — auto-fold identical consecutive lines into <code>[×N]</code>, click to expand, right-click for copy / fold below
 - ⭐ **Receive filter** — keyword / regex filter, case-sensitivity toggle, Ctrl+F to focus
 - ⭐ **Multi-string sender** — independent window, drag-to-reorder, per-item Hex/delay, loop mode, JSON import/export
+- ⭐ **Auto-scroll** — pauses on manual scroll, resumes at bottom
 - ⭐ **Timestamps** — bidirectional send/receive timestamps
 - ⭐ **Pin window** — main window and multi-string window both support always-on-top
 - ⭐ **Themes** — dark / light / system / high-contrast
