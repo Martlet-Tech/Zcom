@@ -29,6 +29,7 @@ export async function initBottom() {
   const checksumType = document.getElementById('checksum-type');
   const checksumPos = document.getElementById('checksum-pos');
   const checksumResult = document.getElementById('checksum-result');
+  const checksumByteOrder = document.getElementById('checksum-byte-order');
 
   const saved = await getSettings();
   lineEnding = saved.lineEnding || 'crlf';
@@ -39,6 +40,10 @@ export async function initBottom() {
   checksumPos.value = saved.checksumPos || '+0';
   checksumType.disabled = !saved.checksumOn;
   checksumPos.disabled = !saved.checksumOn;
+  if (saved.checksumLsb) {
+    checksumByteOrder.querySelectorAll('.segmented-btn').forEach(b => b.classList.toggle('active', b.value === 'lsb'));
+  }
+  updateByteOrderDisabled();
   if (saved.checksumOn) calcChecksum();
 
   // restore send area height
@@ -155,13 +160,26 @@ export async function initBottom() {
     document.dispatchEvent(new CustomEvent('clear-receive'));
   });
 
+  function getChecksumLsb() {
+    return checksumByteOrder.querySelector('.segmented-btn.active')?.value === 'lsb';
+  }
+
+  function updateByteOrderDisabled() {
+    const disabled = checksumType.value === 'add8' || checksumType.value === 'xor8';
+    checksumByteOrder.style.opacity = disabled ? '0.4' : '';
+    checksumByteOrder.querySelectorAll('.segmented-btn').forEach(b => {
+      b.style.pointerEvents = disabled ? 'none' : '';
+    });
+  }
+
   function calcChecksum() {
     const text = sendText.value;
     const hexMode = chkHexSend.checked;
     const algo = checksumType.value;
     const pos = parseInt(checksumPos.value) || 0;
+    const lsb = getChecksumLsb();
     if (!text) { checksumResult.textContent = '—'; return; }
-    invoke('calculate_checksum', { data: text, hexMode, algo, position: pos })
+    invoke('calculate_checksum', { data: text, hexMode, algo, position: pos, lsb })
       .then(r => { checksumResult.textContent = r.checksum; })
       .catch(() => { checksumResult.textContent = '—'; });
   }
@@ -177,6 +195,16 @@ export async function initBottom() {
 
   checksumType.addEventListener('change', async () => {
     await patchSettings({ checksumType: checksumType.value });
+    updateByteOrderDisabled();
+    if (chkChecksum.checked) calcChecksum();
+  });
+
+  checksumByteOrder.addEventListener('click', (e) => {
+    const btn = e.target.closest('.segmented-btn');
+    if (!btn || btn.style.pointerEvents === 'none') return;
+    checksumByteOrder.querySelectorAll('.segmented-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    patchSettings({ checksumLsb: btn.value === 'lsb' });
     if (chkChecksum.checked) calcChecksum();
   });
 
@@ -209,10 +237,11 @@ export async function initBottom() {
     if (chkChecksum.checked) {
       const algo = checksumType.value;
       const pos = parseInt(checksumPos.value) || 0;
+      const lsb = getChecksumLsb();
       try {
-        const r = await invoke('calculate_checksum', { data: text, hexMode, algo, position: pos });
+        const r = await invoke('calculate_checksum', { data: text, hexMode, algo, position: pos, lsb });
         document.dispatchEvent(new CustomEvent('send-echo', { detail: { text: r.appliedHex } }));
-        await invoke('send_data_raw', { data: text, hexMode, encoding, checksumAlgo: algo, checksumPos: pos });
+        await invoke('send_data_raw', { data: text, hexMode, encoding, checksumAlgo: algo, checksumPos: pos, checksumLsb: lsb });
       } catch (e) {
         console.error('Checksum error:', e);
       }

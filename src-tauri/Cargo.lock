@@ -4899,7 +4899,7 @@ dependencies = [
 
 [[package]]
 name = "zcom"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "axum",
  "crc",

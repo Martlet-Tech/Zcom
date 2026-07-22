@@ -8,11 +8,11 @@ import { initStatusBar } from './statusbar.js';
 import { initViewMenu } from './view.js';
 import { initSettings } from './settings.js';
 import { getSettings } from './utils.js';
+import { Keybindings } from './keybindings.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   const settings = await getSettings();
-
-  document.addEventListener('contextmenu', (e) => e.preventDefault());
+  Keybindings.defaults().enable();
 
   initIcons();
   initTitlebar();

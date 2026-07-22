@@ -1,11 +1,14 @@
 mod serial_cmd;
 mod checksum;
 mod state;
-mod mcp_buffer;
+mod receive_buffer;
 mod mcp_server;
+mod window_helper;
+mod encoding_utils;
+mod multi_string;
 
 use state::SerialState;
-use mcp_buffer::McpBuffer;
+use receive_buffer::ReceiveBuffer;
 use mcp_server::McpServerHandle;
 use tauri::Manager;
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
@@ -26,7 +29,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .manage(SerialState::new())
-        .manage(McpBuffer::new())
+        .manage(ReceiveBuffer::new())
         .manage(McpServerHandle::new())
         .invoke_handler(tauri::generate_handler![
             serial_cmd::list_ports,
@@ -37,16 +40,16 @@ pub fn run() {
             serial_cmd::send_raw_bytes,
             serial_cmd::get_port_info,
             serial_cmd::calculate_checksum,
-            serial_cmd::open_multi_string_window,
-            serial_cmd::load_multi_strings,
-            serial_cmd::save_multi_strings,
-            serial_cmd::decode_bytes,
             serial_cmd::set_baud_rate,
+            multi_string::open_multi_string_window,
+            multi_string::load_multi_strings,
+            multi_string::save_multi_strings,
+            encoding_utils::decode_bytes,
             mcp_server::mcp_start,
             mcp_server::mcp_stop,
             mcp_server::mcp_get_status,
-            mcp_buffer::mcp_push_lines,
-            mcp_buffer::mcp_clear_buffer,
+            receive_buffer::mcp_push_lines,
+            receive_buffer::mcp_clear_buffer,
             open_devtools,
         ])
         .setup(|app| {

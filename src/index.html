@@ -98,7 +98,11 @@
         <option value="add8">ADD8</option>
         <option value="xor8">XOR8</option>
       </select>
-      <span class="label">位置:</span>
+      <div class="segmented" id="checksum-byte-order">
+        <button class="segmented-btn active" value="msb">MSB</button>
+        <button class="segmented-btn" value="lsb">LSB</button>
+      </div>
+      <span class="label" title="正数从开头算起（+0 = 第 1 字节前），负数从末尾算起（-1 = 最后 1 字节后）">位置:</span>
       <input type="text" id="checksum-pos" class="small-input" value="+0" disabled />
       <span class="label">校验码:</span>
       <span id="checksum-result" class="checksum-value">—</span>

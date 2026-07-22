@@ -1,11 +1,12 @@
 use crate::checksum;
+use crate::checksum::ChecksumAlgo;
+use crate::encoding_utils;
 use crate::state::SerialState;
 use serial2::{CharSize, FlowControl, Parity, StopBits};
 use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
-use tauri::{Emitter, Manager};
-use serde::{Serialize, Deserialize};
-use std::path::PathBuf;
+use serde::Serialize;
+use tauri::Emitter;
 
 #[derive(Serialize)]
 pub struct PortInfo {
@@ -20,7 +21,7 @@ pub async fn list_ports() -> Result<Vec<PortInfo>, String> {
         .into_iter()
         .map(|path| {
             let name = port_name_from_path(&path);
-            let desc = get_port_description(&name).unwrap_or_else(|| name.clone());
+            let desc = encoding_utils::get_port_description(&name).unwrap_or_else(|| name.clone());
             PortInfo {
                 name,
                 description: desc,
@@ -41,65 +42,6 @@ fn port_name_from_path(path: &std::path::Path) -> String {
     {
         path.to_string_lossy().to_string()
     }
-}
-
-fn decode_oem_text(bytes: &[u8]) -> String {
-    #[cfg(windows)]
-    {
-        extern "system" {
-            fn GetOEMCP() -> u32;
-        }
-        let cp = unsafe { GetOEMCP() };
-        match cp {
-            936 => encoding_rs::GBK.decode(bytes).0.into_owned(),
-            932 => encoding_rs::SHIFT_JIS.decode(bytes).0.into_owned(),
-            949 => encoding_rs::EUC_KR.decode(bytes).0.into_owned(),
-            950 => encoding_rs::BIG5.decode(bytes).0.into_owned(),
-            1250 | 1252 | 1254 | 1257 => encoding_rs::WINDOWS_1252.decode(bytes).0.into_owned(),
-            1251 => encoding_rs::WINDOWS_1251.decode(bytes).0.into_owned(),
-            1253 => encoding_rs::ISO_8859_7.decode(bytes).0.into_owned(),
-            1255 => encoding_rs::WINDOWS_1255.decode(bytes).0.into_owned(),
-            1256 => encoding_rs::WINDOWS_1256.decode(bytes).0.into_owned(),
-            1258 => encoding_rs::WINDOWS_1258.decode(bytes).0.into_owned(),
-            _ => String::from_utf8_lossy(bytes).into_owned(),
-        }
-    }
-    #[cfg(not(windows))]
-    {
-        String::from_utf8_lossy(bytes).into_owned()
-    }
-}
-
-fn get_port_description(name: &str) -> Option<String> {
-    let mut cmd = std::process::Command::new("wmic");
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
-    }
-    let output = cmd
-        .args([
-            "path", "Win32_SerialPort",
-            "where", &format!("DeviceID='{}'", name),
-            "get", "Name", "/format:value",
-        ])
-        .output()
-        .ok()?;
-    let text = decode_oem_text(&output.stdout);
-    for line in text.lines() {
-        let line = line.trim();
-        if line.is_empty() {
-            continue;
-        }
-        if let Some(value) = line.strip_prefix("Name=") {
-            let value: String = value.chars().filter(|c| !c.is_control()).collect();
-            let value = value.trim().trim_matches('"');
-            if !value.is_empty() {
-                return Some(value.to_string());
-            }
-        }
-    }
-    None
 }
 
 #[tauri::command]
@@ -283,16 +225,6 @@ pub async fn set_baud_rate(
     result
 }
 
-fn encode_text(text: &str, encoding: &str) -> Vec<u8> {
-    match encoding {
-        "gbk" => {
-            let (cow, _, _) = encoding_rs::GBK.encode(text);
-            cow.into_owned()
-        }
-        _ => text.as_bytes().to_vec(),
-    }
-}
-
 pub async fn send_data_internal(
     state: &SerialState,
     data: String,
@@ -300,10 +232,10 @@ pub async fn send_data_internal(
     encoding: Option<String>,
 ) -> Result<String, String> {
     let bytes = if hex_mode {
-        parse_hex_string(&data).map_err(|e| format!("Hex parse error: {}", e))?
+        encoding_utils::parse_hex_string(&data).map_err(|e| format!("Hex parse error: {}", e))?
     } else {
         let enc = encoding.as_deref().unwrap_or("utf-8");
-        encode_text(&data, enc)
+        encoding_utils::encode_text(&data, enc)
     };
 
     if !state.connected.load(Ordering::SeqCst) {
@@ -335,17 +267,20 @@ pub async fn send_data_raw(
     encoding: Option<String>,
     checksum_algo: Option<String>,
     checksum_pos: Option<i32>,
+    checksum_lsb: Option<bool>,
 ) -> Result<(), String> {
     let bytes = if hex_mode {
-        parse_hex_string(&data).map_err(|e| format!("Hex parse error: {}", e))?
+        encoding_utils::parse_hex_string(&data).map_err(|e| format!("Hex parse error: {}", e))?
     } else {
         let enc = encoding.as_deref().unwrap_or("utf-8");
-        encode_text(&data, enc)
+        encoding_utils::encode_text(&data, enc)
     };
 
-    let bytes = if let Some(ref algo) = checksum_algo {
+    let bytes = if let Some(ref algo_str) = checksum_algo {
+        let algo: ChecksumAlgo = algo_str.parse()?;
         let pos = checksum_pos.unwrap_or(0);
-        checksum::apply_checksum(&bytes, algo, pos)
+        let lsb = checksum_lsb.unwrap_or(false);
+        checksum::apply_checksum(&bytes, algo, pos, lsb)
     } else {
         bytes
     };
@@ -379,21 +314,7 @@ pub async fn send_raw_bytes(
 pub async fn get_port_info(
     state: tauri::State<'_, SerialState>,
 ) -> Result<serde_json::Value, String> {
-    let name = state.port_name.lock().await.clone().unwrap_or_default();
-    let connected = state.connected.load(Ordering::SeqCst);
-    let tx = state.tx_bytes.load(Ordering::SeqCst);
-    let rx = state.rx_bytes.load(Ordering::SeqCst);
-
-    Ok(serde_json::json!({
-        "name": name,
-        "connected": connected,
-        "tx": tx,
-        "rx": rx,
-        "baud": state.baud_rate.load(Ordering::SeqCst),
-        "dataBits": state.char_size.load(Ordering::SeqCst),
-        "parity": state.parity.lock().await.clone(),
-        "stopBits": state.stop_bits.load(Ordering::SeqCst),
-    }))
+    Ok(state.to_port_info().await)
 }
 
 #[tauri::command]
@@ -402,108 +323,22 @@ pub async fn calculate_checksum(
     hex_mode: bool,
     algo: String,
     position: i32,
+    lsb: Option<bool>,
 ) -> Result<serde_json::Value, String> {
     let bytes = if hex_mode {
-        parse_hex_string(&data).map_err(|e| format!("Hex parse error: {}", e))?
+        encoding_utils::parse_hex_string(&data).map_err(|e| format!("Hex parse error: {}", e))?
     } else {
         data.into_bytes()
     };
 
-    let result = checksum::calc_checksum(&bytes, &algo);
-    let applied = checksum::apply_checksum(&bytes, &algo, position);
+    let algo: ChecksumAlgo = algo.parse()?;
+    let lsb = lsb.unwrap_or(false);
+    let result = checksum::calc_checksum(&bytes, algo);
+    let applied = checksum::apply_checksum(&bytes, algo, position, lsb);
 
     Ok(serde_json::json!({
         "checksum": result.hex,
         "appliedHex": applied.iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(" "),
         "appliedLen": applied.len(),
     }))
-}
-
-#[tauri::command]
-pub async fn open_multi_string_window(app: tauri::AppHandle) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window("multi-string") {
-        window.show().map_err(|e| e.to_string())?;
-        window.set_focus().map_err(|e| e.to_string())?;
-    } else {
-        tauri::WebviewWindowBuilder::new(
-            &app,
-            "multi-string",
-            tauri::WebviewUrl::App("multi.html".into()),
-        )
-        .title("多字符串发送")
-        .inner_size(520.0, 560.0)
-        .min_inner_size(400.0, 400.0)
-        .resizable(true)
-        .decorations(false)
-        .center()
-        .build()
-        .map_err(|e| e.to_string())?;
-    }
-    Ok(())
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct MultiStringItem {
-    pub text: String,
-    pub delay: u32,
-    pub hex: bool,
-}
-
-fn multi_strings_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
-    let home = app.path().home_dir().map_err(|e| e.to_string())?;
-    let dir = home.join(".zcom");
-    std::fs::create_dir_all(&dir).map_err(|e| format!("Failed to create .zcom dir: {}", e))?;
-    Ok(dir.join("multi-strings.json"))
-}
-
-#[tauri::command]
-pub async fn load_multi_strings(app: tauri::AppHandle) -> Result<Vec<MultiStringItem>, String> {
-    let path = multi_strings_path(&app)?;
-    if !path.exists() {
-        return Ok(vec![]);
-    }
-    let content = tokio::fs::read_to_string(&path)
-        .await
-        .map_err(|e| format!("Failed to read multi-strings.json: {}", e))?;
-    let items: Vec<MultiStringItem> = serde_json::from_str(&content)
-        .map_err(|e| format!("Failed to parse multi-strings.json: {}", e))?;
-    Ok(items)
-}
-
-#[tauri::command]
-pub async fn save_multi_strings(app: tauri::AppHandle, items: Vec<MultiStringItem>) -> Result<(), String> {
-    let path = multi_strings_path(&app)?;
-    let content = serde_json::to_string_pretty(&items)
-        .map_err(|e| format!("Failed to serialize: {}", e))?;
-    tokio::fs::write(&path, content)
-        .await
-        .map_err(|e| format!("Failed to write multi-strings.json: {}", e))?;
-    Ok(())
-}
-
-#[tauri::command]
-pub async fn decode_bytes(bytes: Vec<u8>, encoding: String) -> Result<String, String> {
-    match encoding.as_str() {
-        "gbk" => {
-            let (cow, _, _) = encoding_rs::GBK.decode(&bytes);
-            Ok(cow.into_owned())
-        }
-        _ => Ok(String::from_utf8_lossy(&bytes).into_owned()),
-    }
-}
-
-fn parse_hex_string(s: &str) -> Result<Vec<u8>, String> {
-    let s = s.trim();
-    if s.is_empty() {
-        return Ok(vec![]);
-    }
-    let hex_chars: String = s.chars().filter(|c| !c.is_whitespace()).collect();
-    if hex_chars.len() % 2 != 0 {
-        return Err("Hex string must have even number of characters".into());
-    }
-    let bytes: Result<Vec<u8>, _> = (0..hex_chars.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&hex_chars[i..i + 2], 16))
-        .collect();
-    bytes.map_err(|e| format!("Invalid hex: {}", e))
 }

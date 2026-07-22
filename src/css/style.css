@@ -61,7 +61,6 @@ html, body {
 
 button {
   cursor: pointer;
-  border: none;
   outline: none;
   font-family: inherit;
   font-size: inherit;
@@ -170,7 +169,8 @@ select:focus, input:focus, textarea:focus {
 .filter-btn svg,
 .filter-icon svg,
 .drag-handle svg,
-.view-check svg {
+.view-check svg,
+.item-del-btn svg {
   display: block;
   width: 14px;
   height: 14px;
@@ -669,7 +669,7 @@ select:focus, input:focus, textarea:focus {
   border: none;
   border-right: 1px solid var(--border);
   background: var(--bg2);
-  color: var(--text);
+  color: var(--fg);
   cursor: pointer;
   font-size: 12px;
   line-height: 1.4;
@@ -735,18 +735,70 @@ select:focus, input:focus, textarea:focus {
   font-size: 16px;
   padding: 0 4px;
 }
-.multi-item .item-text {
+.item-text-wrap {
+  display: flex;
+  align-items: center;
   flex: 1;
+  min-width: 0;
   padding: 3px 6px;
   font-family: 'Consolas', monospace;
   font-size: 12px;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 3px;
-  outline: none;
+  color: var(--fg);
+  cursor: text;
+  position: relative;
+  transition: border-color 0.1s;
+}
+.item-text-wrap:focus-within {
+  border-color: var(--accent);
+}
+.item-text-data {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--fg);
 }
-.multi-item .item-text:focus { border-color: var(--accent); }
+.item-text-name {
+  flex-shrink: 0;
+  white-space: nowrap;
+  opacity: 0.75;
+  cursor: pointer;
+  margin-left: auto;
+  padding-left: 8px;
+  user-select: none;
+  color: var(--fg-dim);
+  text-align: right;
+}
+.item-text-name.placeholder {
+  font-style: italic;
+}
+.item-text-input,
+.item-text-name-input {
+  display: none;
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.item-text-wrap.edit-data .item-text-data,
+.item-text-wrap.edit-data .item-text-name,
+.item-text-wrap.edit-name .item-text-data,
+.item-text-wrap.edit-name .item-text-name {
+  display: none;
+}
+.item-text-wrap.edit-data .item-text-input,
+.item-text-wrap.edit-name .item-text-name-input {
+  display: block;
+}
 .multi-item .item-delay {
   width: 50px;
   padding: 2px 4px;

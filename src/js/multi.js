@@ -5,6 +5,7 @@ import { open, save } from '@tauri-apps/plugin-dialog';
 import { writeTextFile, readTextFile } from '@tauri-apps/plugin-fs';
 import { parseHexString, getSettings } from './utils.js';
 import { initIcons, createElement, GripVertical, X } from './icons.js';
+import { Keybindings } from './keybindings.js';
 
 let items = [];
 let loopActive = false;
@@ -13,6 +14,7 @@ let draggedItem = null;
 
 export async function initMulti() {
   const win = getCurrentWindow();
+  Keybindings.defaults().enable();
   initIcons();
 
   const s = await getSettings();
@@ -28,6 +30,7 @@ export async function initMulti() {
 
   const pinBtn = document.getElementById('multi-btn-pin');
   let pinned = false;
+  pinBtn.style.opacity = '0.5';
   pinBtn.addEventListener('click', async () => {
     pinned = !pinned;
     await win.setAlwaysOnTop(pinned);
@@ -52,22 +55,21 @@ export async function initMulti() {
   try {
     const saved = await invoke('load_multi_strings');
     if (saved && saved.length > 0) {
-      saved.forEach(d => {
-        const text = typeof d.text === 'string' ? d.text : '';
-        const delay = Math.min(60000, Math.max(0, parseInt(d.delay, 10) || 100));
-        const hex = d.hex === true;
-        addItem(text, delay, hex);
-      });
-      return;
+      saved.forEach(d => addItem(d.text, d.delay, d.hex === true, d.name));
+    } else {
+      addItem();
     }
   } catch (e) {
     console.error('load_multi_strings error:', e);
+    addItem();
   }
-  addItem();
+
+  await win.show();
+  await win.setFocus();
 }
 
 async function saveItems() {
-  const data = items.map(i => ({ text: i.text, delay: i.delay, hex: i.hex }));
+  const data = items.map(i => ({ text: i.text, delay: i.delay, hex: i.hex, name: i.name }));
   try {
     await invoke('save_multi_strings', { items: data });
   } catch (e) {
@@ -75,12 +77,13 @@ async function saveItems() {
   }
 }
 
-function addItem(text, delay, hex) {
+function addItem(text, delay, hex, name) {
   const item = {
     id: Date.now() + Math.random(),
     text: String(text || ''),
     delay: Math.min(60000, Math.max(0, parseInt(delay, 10) || 100)),
     hex: hex === true,
+    name: String(name || ''),
   };
   items.push(item);
   renderItem(item);
@@ -93,7 +96,13 @@ function renderItem(item) {
   div.dataset.id = item.id;
   div.innerHTML = `
     <span class="drag-handle"></span>
-    <input type="text" class="item-text" value="${escapeHtml(item.text)}" placeholder="输入发送内容" />
+    <button class="item-del-btn"></button>
+    <div class="item-text-wrap" data-item-id="${item.id}">
+      <span class="item-text-data">${escapeHtml(item.text || ' ')}</span>
+      <span class="item-text-name${item.name ? '' : ' placeholder'}">${escapeHtml(item.name || '点击命名')}</span>
+      <input type="text" class="item-text-input" placeholder="输入发送内容" />
+      <input type="text" class="item-text-name-input" placeholder="输入备注名称..." />
+    </div>
     <span class="item-label">延迟:</span>
     <input type="number" class="item-delay" value="${item.delay}" min="0" max="60000" />
     <span class="item-label">ms</span>
@@ -101,7 +110,6 @@ function renderItem(item) {
       <input type="checkbox" class="item-hex-chk" ${item.hex ? 'checked' : ''} /> Hex
     </label>
     <button class="item-send-btn">发送</button>
-    <button class="item-del-btn"></button>
   `;
 
   const handle = div.querySelector('.drag-handle');
@@ -114,8 +122,36 @@ function renderItem(item) {
     startDrag(item, div);
   });
 
-  const textInput = div.querySelector('.item-text');
-  textInput.addEventListener('input', () => { item.text = textInput.value; saveItems(); });
+  const wrap = div.querySelector('.item-text-wrap');
+  const dataSpan = wrap.querySelector('.item-text-data');
+  const nameSpan = wrap.querySelector('.item-text-name');
+  const dataInput = wrap.querySelector('.item-text-input');
+  const nameInput = wrap.querySelector('.item-text-name-input');
+
+  dataSpan.addEventListener('click', () => {
+    dataInput.value = item.text;
+    wrap.classList.add('edit-data');
+    dataInput.focus();
+    dataInput.select();
+  });
+
+  nameSpan.addEventListener('click', (e) => {
+    e.stopPropagation();
+    nameInput.value = item.name;
+    wrap.classList.add('edit-name');
+    nameInput.focus();
+    nameInput.select();
+  });
+
+  dataInput.addEventListener('blur', () => saveDataEdit(item, dataSpan, dataInput, wrap));
+  dataInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); dataInput.blur(); }
+  });
+
+  nameInput.addEventListener('blur', () => saveNameEdit(item, nameSpan, nameInput, wrap));
+  nameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); nameInput.blur(); }
+  });
 
   const delayInput = div.querySelector('.item-delay');
   delayInput.addEventListener('input', () => { item.delay = parseInt(delayInput.value) || 0; saveItems(); });
@@ -132,6 +168,21 @@ function renderItem(item) {
   });
 
   list.appendChild(div);
+}
+
+function saveDataEdit(item, dataSpan, dataInput, wrap) {
+  item.text = dataInput.value;
+  dataSpan.textContent = item.text || ' ';
+  wrap.classList.remove('edit-data');
+  saveItems();
+}
+
+function saveNameEdit(item, nameSpan, nameInput, wrap) {
+  item.name = nameInput.value;
+  nameSpan.textContent = item.name || '点击命名';
+  nameSpan.classList.toggle('placeholder', !item.name);
+  wrap.classList.remove('edit-name');
+  saveItems();
 }
 
 function startDrag(item, div) {
@@ -216,7 +267,7 @@ async function exportJson() {
   try {
     const path = await save({ filters: [{ name: 'JSON', extensions: ['json'] }] });
     if (path) {
-      const data = items.map(i => ({ text: i.text, delay: i.delay, hex: i.hex }));
+      const data = items.map(i => ({ text: i.text, delay: i.delay, hex: i.hex, name: i.name }));
       await writeTextFile(path, JSON.stringify(data, null, 2));
     }
   } catch (e) {
@@ -233,12 +284,7 @@ async function importJson() {
       if (!Array.isArray(data)) return;
       items = [];
       document.getElementById('multi-list').innerHTML = '';
-      data.forEach(d => {
-        const text = typeof d.text === 'string' ? d.text : '';
-        const delay = Math.min(60000, Math.max(0, parseInt(d.delay, 10) || 100));
-        const hex = d.hex === true;
-        addItem(text, delay, hex);
-      });
+      data.forEach(d => addItem(d.text, d.delay, d.hex === true, d.name));
       saveItems();
     }
   } catch (e) {

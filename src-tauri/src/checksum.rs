@@ -1,5 +1,27 @@
 use crc::{Crc, Algorithm};
 use serde::Serialize;
+use std::str::FromStr;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ChecksumAlgo {
+    Crc16,
+    Crc32,
+    Add8,
+    Xor8,
+}
+
+impl FromStr for ChecksumAlgo {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "crc16" => Ok(Self::Crc16),
+            "crc32" => Ok(Self::Crc32),
+            "add8" => Ok(Self::Add8),
+            "xor8" => Ok(Self::Xor8),
+            _ => Err(format!("Unknown checksum algorithm: {}", s)),
+        }
+    }
+}
 
 #[derive(Debug, Serialize)]
 pub struct ChecksumResult {
@@ -29,46 +51,48 @@ const CRC32: Crc<u32> = Crc::<u32>::new(&Algorithm {
     residue: 0xDEBB20E3,
 });
 
-pub fn calc_checksum(data: &[u8], algo: &str) -> ChecksumResult {
+pub fn calc_checksum(data: &[u8], algo: ChecksumAlgo) -> ChecksumResult {
     match algo {
-        "crc16" => {
+        ChecksumAlgo::Crc16 => {
             let digest = CRC16_MODBUS.checksum(data);
             ChecksumResult {
                 value: digest.to_string(),
                 hex: format!("{:04X}", digest),
             }
         }
-        "crc32" => {
+        ChecksumAlgo::Crc32 => {
             let digest = CRC32.checksum(data);
             ChecksumResult {
                 value: digest.to_string(),
                 hex: format!("{:08X}", digest),
             }
         }
-        "add8" => {
+        ChecksumAlgo::Add8 => {
             let sum: u8 = data.iter().fold(0u8, |a, b| a.wrapping_add(*b));
             ChecksumResult {
                 value: sum.to_string(),
                 hex: format!("{:02X}", sum),
             }
         }
-        "xor8" => {
+        ChecksumAlgo::Xor8 => {
             let xor = data.iter().fold(0u8, |a, b| a ^ b);
             ChecksumResult {
                 value: xor.to_string(),
                 hex: format!("{:02X}", xor),
             }
         }
-        _ => ChecksumResult {
-            value: "0".into(),
-            hex: "00".into(),
-        },
     }
 }
 
-pub fn apply_checksum(data: &[u8], algo: &str, position: i32) -> Vec<u8> {
+pub fn apply_checksum(data: &[u8], algo: ChecksumAlgo, position: i32, lsb: bool) -> Vec<u8> {
     let result = calc_checksum(data, algo);
-    let check_bytes = hex_to_bytes(&result.hex);
+    let mut check_bytes: Vec<u8> = (0..result.hex.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&result.hex[i..i + 2], 16).unwrap())
+        .collect();
+    if lsb {
+        check_bytes.reverse();
+    }
     let pos = if position >= 0 {
         position as usize
     } else {
@@ -81,13 +105,4 @@ pub fn apply_checksum(data: &[u8], algo: &str, position: i32) -> Vec<u8> {
     out.extend_from_slice(&check_bytes);
     out.extend_from_slice(&data[pos..]);
     out
-}
-
-fn hex_to_bytes(s: &str) -> Vec<u8> {
-    let s = s.trim();
-    if s.len() < 2 { return vec![]; }
-    let bytes: Vec<u8> = (0..s.len()).step_by(2)
-        .filter_map(|i| u8::from_str_radix(&s[i..i+2], 16).ok())
-        .collect();
-    bytes
 }

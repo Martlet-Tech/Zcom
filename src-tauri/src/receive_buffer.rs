@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 #[derive(Clone)]
-pub struct McpBuffer {
+pub struct ReceiveBuffer {
     inner: Arc<Mutex<BufferInner>>,
 }
 
@@ -12,7 +12,7 @@ struct BufferInner {
     max_lines: usize,
 }
 
-impl McpBuffer {
+impl ReceiveBuffer {
     pub fn new() -> Self {
         Self {
             inner: Arc::new(Mutex::new(BufferInner {
@@ -45,7 +45,7 @@ impl McpBuffer {
 
 #[tauri::command]
 pub async fn mcp_push_lines(
-    buffer: tauri::State<'_, McpBuffer>,
+    buffer: tauri::State<'_, ReceiveBuffer>,
     lines: Vec<String>,
 ) -> Result<(), String> {
     buffer.push_lines(lines).await;
@@ -54,7 +54,7 @@ pub async fn mcp_push_lines(
 
 #[tauri::command]
 pub async fn mcp_clear_buffer(
-    buffer: tauri::State<'_, McpBuffer>,
+    buffer: tauri::State<'_, ReceiveBuffer>,
 ) -> Result<(), String> {
     buffer.clear().await;
     Ok(())
