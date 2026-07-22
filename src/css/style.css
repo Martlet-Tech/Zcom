@@ -135,7 +135,9 @@ select:focus, input:focus, textarea:focus {
   color: var(--fg);
 }
 .mcp-dot {
-  font-size: 10px;
+  font-size: 16px;
+  line-height: 1;
+  margin-top: -2px;
   color: #555;
   transition: color .2s;
 }
