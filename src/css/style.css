@@ -206,6 +206,12 @@ select:focus, input:focus, textarea:focus {
   gap: 6px;
   margin-left: auto;
 }
+.menu-right .small-btn,
+.menu-right .baud-select,
+.menu-right .cs-trigger {
+  height: 28px;
+  box-sizing: border-box;
+}
 .custom-select {
   position: relative;
   width: 220px;
@@ -229,6 +235,8 @@ select:focus, input:focus, textarea:focus {
   cursor: pointer;
   min-height: 0;
   gap: 4px;
+  height: 28px;
+  box-sizing: border-box;
 }
 .custom-select:focus .cs-trigger {
   border-color: var(--accent);
@@ -249,8 +257,8 @@ select:focus, input:focus, textarea:focus {
 .cs-arrow-icon svg,
 .cs-arrow svg {
   display: block;
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
 }
 .custom-select.open .cs-arrow {
   transform: rotate(180deg);
@@ -302,6 +310,8 @@ select:focus, input:focus, textarea:focus {
   width: 72px;
   padding: 3px 6px;
   font-size: 13px;
+  height: 28px;
+  box-sizing: border-box;
 }
 .small-btn {
   padding: 3px 10px;
