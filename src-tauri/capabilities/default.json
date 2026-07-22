@@ -25,6 +25,7 @@
     "dialog:allow-message",
     "store:default",
     "fs:default",
+    "fs:allow-write-text-file",
     {
       "identifier": "fs:scope",
       "allow": [

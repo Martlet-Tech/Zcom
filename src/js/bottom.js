@@ -126,9 +126,24 @@ export async function initBottom() {
 
   fileSaveBtn.addEventListener('click', async () => {
     try {
-      const path = await save({ filters: [{ name: 'Text Files', extensions: ['txt', 'log'] }, { name: 'All Files', extensions: ['*'] }] });
+      const now = new Date();
+      const yy = String(now.getFullYear()).slice(2);
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const hh = String(now.getHours()).padStart(2, '0');
+      const min = String(now.getMinutes()).padStart(2, '0');
+      const ss = String(now.getSeconds()).padStart(2, '0');
+      const defaultName = `${yy}${mm}${dd}-${hh}${min}${ss}`;
+      const path = await save({
+        defaultPath: defaultName + '.txt',
+        filters: [{ name: 'Text Files', extensions: ['txt', 'log'] }, { name: 'All Files', extensions: ['*'] }]
+      });
       if (path) {
-        await writeTextFile(path, document.getElementById('receive-content')?.textContent || '');
+        let finalPath = path;
+        if (!/\.\w+$/.test(path)) {
+          finalPath = path + '.txt';
+        }
+        await writeTextFile(finalPath, document.getElementById('receive-content')?.textContent || '');
       }
     } catch (e) {
       console.error('File save error:', e);
