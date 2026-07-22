@@ -1,4 +1,5 @@
 import { getSettings, patchSettings } from './utils.js';
+import { createElement, Square, CheckSquare } from './icons.js';
 
 const VIEW_GROUPS = [
   { id: 'filter', label: '过滤栏' },
@@ -20,7 +21,9 @@ export async function initViewMenu() {
       const item = document.createElement('div');
       item.className = 'view-item' + (hiddenGroups.includes(g.id) ? '' : ' checked');
       item.dataset.group = g.id;
-      item.innerHTML = `<span class="view-check">${hiddenGroups.includes(g.id) ? '☐' : '☑'}</span><span>${g.label}</span>`;
+      item.innerHTML = `<span class="view-check"></span><span>${g.label}</span>`;
+      const checkSpan = item.querySelector('.view-check');
+      checkSpan.appendChild(createElement(hiddenGroups.includes(g.id) ? Square : CheckSquare));
       item.addEventListener('click', () => toggleGroup(g.id));
       dd.appendChild(item);
     });

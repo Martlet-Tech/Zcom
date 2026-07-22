@@ -4,6 +4,7 @@ import { listen } from '@tauri-apps/api/event';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { writeTextFile, readTextFile } from '@tauri-apps/plugin-fs';
 import { parseHexString, getSettings } from './utils.js';
+import { initIcons, createElement, GripVertical, X } from './icons.js';
 
 let items = [];
 let loopActive = false;
@@ -12,6 +13,7 @@ let draggedItem = null;
 
 export async function initMulti() {
   const win = getCurrentWindow();
+  initIcons();
 
   const s = await getSettings();
   applyThemeClass(s.theme || 'dark');
@@ -90,7 +92,7 @@ function renderItem(item) {
   div.className = 'multi-item';
   div.dataset.id = item.id;
   div.innerHTML = `
-    <span class="drag-handle">⠿</span>
+    <span class="drag-handle"></span>
     <input type="text" class="item-text" value="${escapeHtml(item.text)}" placeholder="输入发送内容" />
     <span class="item-label">延迟:</span>
     <input type="number" class="item-delay" value="${item.delay}" min="0" max="60000" />
@@ -99,10 +101,13 @@ function renderItem(item) {
       <input type="checkbox" class="item-hex-chk" ${item.hex ? 'checked' : ''} /> Hex
     </label>
     <button class="item-send-btn">发送</button>
-    <button class="item-del-btn">✕</button>
+    <button class="item-del-btn"></button>
   `;
 
   const handle = div.querySelector('.drag-handle');
+  handle.appendChild(createElement(GripVertical));
+  div.querySelector('.item-del-btn').appendChild(createElement(X));
+
   handle.addEventListener('mousedown', (e) => {
     if (e.button !== 0) return;
     e.preventDefault();

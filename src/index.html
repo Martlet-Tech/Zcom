@@ -12,11 +12,11 @@
       <span class="titlebar-title">Zcom调试助手</span>
     </div>
     <div class="titlebar-controls">
-      <button id="btn-pin" class="title-btn" title="窗口置顶">📌</button>
-      <button id="btn-multi" class="title-btn" title="多字符串发送">📋</button>
-      <button id="btn-minimize" class="title-btn" title="最小化">─</button>
-      <button id="btn-maximize" class="title-btn" title="最大化">□</button>
-      <button id="btn-close" class="title-btn" title="关闭">✕</button>
+      <button id="btn-pin" class="title-btn" title="窗口置顶"><i data-lucide="pin"></i></button>
+      <button id="btn-multi" class="title-btn" title="多字符串发送"><i data-lucide="clipboard-list"></i></button>
+      <button id="btn-minimize" class="title-btn" title="最小化"><i data-lucide="minus"></i></button>
+      <button id="btn-maximize" class="title-btn" title="最大化"><i data-lucide="maximize-2"></i></button>
+      <button id="btn-close" class="title-btn" title="关闭"><i data-lucide="x"></i></button>
     </div>
   </div>
 
@@ -39,11 +39,11 @@
       <div id="com-select" class="custom-select" tabindex="0">
         <div class="cs-trigger">
           <span class="cs-text" id="com-select-text">— 选择串口 —</span>
-          <span class="cs-arrow">▾</span>
+          <i data-lucide="chevron-down" class="cs-arrow-icon"></i>
         </div>
         <div class="cs-dropdown" id="com-select-dropdown"></div>
       </div>
-      <button id="btn-serial-settings" class="small-btn" title="串口详细设置">⚙</button>
+      <button id="btn-serial-settings" class="small-btn" title="串口详细设置"><i data-lucide="settings"></i></button>
       <select id="baud-select" class="baud-select">
         <option value="300">300</option>
         <option value="1200">1200</option>
@@ -61,7 +61,7 @@
         <option value="460800">460800</option>
         <option value="921600">921600</option>
       </select>
-      <button id="btn-refresh-ports" class="small-btn" title="刷新串口">↻</button>
+      <button id="btn-refresh-ports" class="small-btn" title="刷新串口"><i data-lucide="refresh-cw"></i></button>
       <button id="btn-toggle-port" class="small-btn" disabled>打开</button>
       <span id="port-status" class="port-status" title="未连接"></span>
     </div>
@@ -74,24 +74,24 @@
 
     <div id="send-drag-handle"></div>
     <div id="send-area" class="bottom-row">
-      <button id="btn-clear-receive" class="small-btn">🗑 清空</button>
+      <button id="btn-clear-receive" class="small-btn"><i data-lucide="trash-2"></i> 清空</button>
       <textarea id="send-text" class="send-textarea" placeholder="输入要发送的数据..."></textarea>
       <button id="btn-send" class="send-btn" disabled>发送</button>
     </div>
 
     <div id="filter-bar" data-view-group="filter">
-      <span class="filter-icon">🔍</span>
+      <span class="filter-icon"><i data-lucide="search"></i></span>
       <input type="text" id="filter-input" class="filter-input" placeholder="过滤..." spellcheck="false" />
       <button id="filter-btn-case" class="filter-btn" title="大小写敏感">Aa</button>
       <button id="filter-btn-regex" class="filter-btn" title="正则模式">.*</button>
-      <button id="filter-btn-clear" class="filter-btn" title="清除过滤">✕</button>
+      <button id="filter-btn-clear" class="filter-btn" title="清除过滤"><i data-lucide="x"></i></button>
     </div>
 
     <div id="file-ops" class="bottom-row" data-view-group="file">
-      <button id="btn-file-open" class="small-btn">📂 打开文件</button>
+      <button id="btn-file-open" class="small-btn"><i data-lucide="folder-open"></i> 打开文件</button>
       <span id="file-path" class="file-path-label">未选择文件</span>
-      <button id="btn-file-send" class="small-btn" disabled>📤 发送文件</button>
-      <button id="btn-file-save" class="small-btn">💾 保存接收</button>
+      <button id="btn-file-send" class="small-btn" disabled><i data-lucide="upload"></i> 发送文件</button>
+      <button id="btn-file-save" class="small-btn"><i data-lucide="save"></i> 保存接收</button>
     </div>
     <div id="checksum-area" class="bottom-row" data-view-group="checksum">
       <label class="chk-label">
@@ -134,7 +134,7 @@
     <div id="settings-dialog" class="dialog">
       <div class="dialog-titlebar">
         <span>系统设置</span>
-        <button class="dialog-close title-btn">✕</button>
+        <button class="dialog-close title-btn"><i data-lucide="x"></i></button>
       </div>
       <div class="dialog-body">
         <div class="setting-row">
@@ -212,7 +212,7 @@
     <div id="serial-settings-dialog" class="dialog" style="width:380px;">
       <div class="dialog-titlebar">
         <span>串口详细设置</span>
-        <button class="dialog-close title-btn" id="btn-serial-settings-close">✕</button>
+        <button class="dialog-close title-btn" id="btn-serial-settings-close"><i data-lucide="x"></i></button>
       </div>
       <div class="dialog-body">
         <div class="setting-row">

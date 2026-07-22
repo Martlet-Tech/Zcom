@@ -1,3 +1,4 @@
+import { initIcons } from './icons.js';
 import { invoke } from '@tauri-apps/api/core';
 import { initTitlebar } from './titlebar.js';
 import { initMenu, initHelpMenu } from './menu.js';
@@ -13,6 +14,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   document.addEventListener('contextmenu', (e) => e.preventDefault());
 
+  initIcons();
   initTitlebar();
   initMenu();
   initHelpMenu();

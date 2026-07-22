@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile, readFile } from '@tauri-apps/plugin-fs';
 import { getSettings, patchSettings } from './utils.js';
+import { setButtonIcon, Upload, Square } from './icons.js';
 
 let portOpen = false;
 let fileSending = false;
@@ -96,7 +97,7 @@ export async function initBottom() {
   fileSendBtn.addEventListener('click', async () => {
     if (fileSending) {
       fileSendAbort = true;
-      fileSendBtn.textContent = '📤 发送文件';
+      setButtonIcon(fileSendBtn, Square, '中止');
       fileSending = false;
       return;
     }
@@ -104,7 +105,7 @@ export async function initBottom() {
 
     fileSending = true;
     fileSendAbort = false;
-    fileSendBtn.textContent = '⏹ 中止';
+    setButtonIcon(fileSendBtn, Square, '中止');
 
     try {
       const content = await readFile(selectedFilePath);
@@ -121,7 +122,7 @@ export async function initBottom() {
 
     fileSending = false;
     fileSendAbort = false;
-    fileSendBtn.textContent = '📤 发送文件';
+    setButtonIcon(fileSendBtn, Upload, '发送文件');
   });
 
   fileSaveBtn.addEventListener('click', async () => {

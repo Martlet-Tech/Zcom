@@ -136,6 +136,18 @@ select:focus, input:focus, textarea:focus {
 .title-btn:hover { background: var(--bg3); color: var(--fg); }
 #btn-close:hover { background: var(--danger); color: #fff; }
 
+.title-btn svg,
+.small-btn svg,
+.filter-btn svg,
+.filter-icon svg,
+.drag-handle svg,
+.view-check svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+}
+
 /* ===== Menu Bar ===== */
 #menu-bar {
   display: flex;
@@ -205,7 +217,16 @@ select:focus, input:focus, textarea:focus {
   flex-shrink: 0;
   transition: transform 0.15s;
 }
+.cs-arrow-icon svg,
+.cs-arrow svg {
+  display: block;
+  width: 12px;
+  height: 12px;
+}
 .custom-select.open .cs-arrow {
+  transform: rotate(180deg);
+}
+.custom-select.open .cs-arrow-icon svg {
   transform: rotate(180deg);
 }
 .cs-dropdown {
@@ -257,6 +278,9 @@ select:focus, input:focus, textarea:focus {
   padding: 3px 10px;
   font-size: 12px;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 .port-status {
   display: inline-block;
