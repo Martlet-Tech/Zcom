@@ -39,6 +39,7 @@
 
 ## 特性
 
+- 🔥 **MCP（Model Context Protocol）服务** — 内置 MCP HTTP 服务器，AI agent（opencode、Claude Desktop 等）可实时读取串口数据、查询端口状态、发送指令。设置中启用即开，连接地址 `http://localhost:9876/mcp`。
 - ⭐ **串口通信** — 自动枚举 COM 口，显示设备名称，支持 USB 串口热插拔
 - ⭐ **双模收发** — 文本/Hex 发送与接收，实时切换
 - ⭐ **重复行折叠** — 自动折叠连续重复行显示为 <code>[×N]</code>，点击展开，右键菜单支持复制和折叠以下重复项

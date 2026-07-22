@@ -32,6 +32,9 @@ let prevRaw = '';
 
 let contextMenu = null;
 
+let mcpBuffer = [];
+let mcpFlushTimer = null;
+
 function matchesFilter(text) {
   if (!filterText) return true;
   let content = text;
@@ -294,6 +297,19 @@ function initFilter() {
       filterInput.select();
     }
   });
+
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'a' || e.key === 'A')) {
+      const tag = document.activeElement?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      e.preventDefault();
+      const range = document.createRange();
+      range.selectNodeContents(receiveContent);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
+  });
 }
 
 function appendLine(text) {
@@ -325,6 +341,7 @@ function appendLine(text) {
         }
         const badge = createFoldBadge(text, repeatCount);
         receiveContent.appendChild(badge);
+        mcpBuffer.push(badge.textContent);
         foldActive = true;
         foldText = raw;
         foldCount = repeatCount;
@@ -349,6 +366,7 @@ function appendLine(text) {
     showLineContextMenu(e, line);
   });
   receiveContent.appendChild(line);
+  mcpBuffer.push(text);
 
   while (receiveContent.children.length > MAX_LINES) {
     const removed = receiveContent.removeChild(receiveContent.firstChild);
@@ -380,6 +398,7 @@ function appendStreamText(text) {
     return;
   }
   last.textContent += text;
+  mcpBuffer.push(text);
   if (filterText) {
     last.style.display = matchesFilter(last.textContent) ? '' : 'none';
   }
@@ -478,13 +497,15 @@ export async function initReceive() {
   document.addEventListener('fold-repeat-changed', (e) => {
     foldThreshold = e.detail.foldRepeatCount || 5;
   });
+
+  mcpFlushTimer = setInterval(flushMcp, 1000);
 }
 
 export function setEncoding(enc) {
   encoding = enc;
 }
 
-export function clearReceive() {
+function clearReceiveLines() {
   if (receiveContent) {
     receiveContent.innerHTML = '';
   }
@@ -494,6 +515,24 @@ export function clearReceive() {
   foldCount = 0;
   repeatCount = 0;
   prevRaw = '';
+  mcpBuffer = [];
+}
+
+export async function clearReceive() {
+  await flushMcp();
+  clearReceiveLines();
+  invoke('mcp_clear_buffer').catch(() => {});
+}
+
+async function flushMcp() {
+  if (mcpBuffer.length === 0) return;
+  const lines = mcpBuffer.splice(0);
+  try {
+    await invoke('mcp_push_lines', { lines });
+  } catch {
+    mcpBuffer.unshift(...lines);
+    console.warn('MCP flush failed, will retry');
+  }
 }
 
 export function getReceiveText() {

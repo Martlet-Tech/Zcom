@@ -38,6 +38,7 @@ Issues and PRs welcome.
 
 ## Features
 
+- 🔥 **MCP (Model Context Protocol) Server** — built-in MCP HTTP server lets AI agents (opencode, Claude Desktop, etc.) read serial data, inspect port status, and send commands in real time. Enable in settings, connect at `http://localhost:9876/mcp`.
 - ⭐ **Serial communication** — auto-enumerate COM ports with device descriptions, hot-plug support
 - ⭐ **Dual-mode I/O** — text / Hex send and receive, switch on the fly
 - ⭐ **Repeat line folding** — auto-fold identical consecutive lines into <code>[×N]</code>, click to expand, right-click for copy / fold below

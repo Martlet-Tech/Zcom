@@ -293,9 +293,8 @@ fn encode_text(text: &str, encoding: &str) -> Vec<u8> {
     }
 }
 
-#[tauri::command]
-pub async fn send_data(
-    state: tauri::State<'_, SerialState>,
+pub async fn send_data_internal(
+    state: &SerialState,
     data: String,
     hex_mode: bool,
     encoding: Option<String>,
@@ -316,6 +315,16 @@ pub async fn send_data(
     state.tx_bytes.fetch_add(bytes.len() as u64, Ordering::SeqCst);
 
     Ok(bytes.iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(" "))
+}
+
+#[tauri::command]
+pub async fn send_data(
+    state: tauri::State<'_, SerialState>,
+    data: String,
+    hex_mode: bool,
+    encoding: Option<String>,
+) -> Result<String, String> {
+    send_data_internal(&state, data, hex_mode, encoding).await
 }
 
 #[tauri::command]

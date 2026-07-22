@@ -1,6 +1,6 @@
 [package]
 name = "zcom"
-version = "0.6.2"
+version = "0.7.0"
 description = "High performance serial debug assistant"
 authors = ["zt"]
 edition = "2021"
@@ -13,10 +13,12 @@ crate-type = ["lib", "cdylib", "staticlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["tray-icon", "devtools"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-store = "2"
+axum = { version = "0.7", features = ["json"] }
+tower-http = { version = "0.5", features = ["cors"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serial2 = "0.2"

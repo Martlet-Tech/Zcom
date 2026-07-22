@@ -1,5 +1,6 @@
 import { getSettings, saveSettings } from './utils.js';
 import { emit } from '@tauri-apps/api/event';
+import { invoke } from '@tauri-apps/api/core';
 
 let systemThemeMedia = null;
 let systemThemeHandler = null;
@@ -47,6 +48,10 @@ async function loadDialogValues() {
   if (segClose) initSegmented(segClose, ss.closeBehavior);
   const foldCount = document.getElementById('setting-fold-count');
   if (foldCount) foldCount.value = ss.foldRepeatCount;
+  const mcpEnabled = document.getElementById('setting-mcp-enabled');
+  if (mcpEnabled) mcpEnabled.checked = ss.mcpEnabled;
+  const mcpPort = document.getElementById('setting-mcp-port');
+  if (mcpPort) mcpPort.value = ss.mcpPort;
 }
 
 function applyStyles(s) {
@@ -83,6 +88,7 @@ export async function initSettings() {
 
   const s = await getSettings();
   applyStyles(s);
+  await applyMcpSettings(s);
   emit('theme-changed', s.theme);
   document.dispatchEvent(new CustomEvent('settings-applied', { detail: s }));
   document.dispatchEvent(new CustomEvent('line-ending-changed', { detail: { lineEnding: s.lineEnding } }));
@@ -112,16 +118,28 @@ export async function initSettings() {
       receiveNewline: segReceive ? readSegmented(segReceive) || 'auto' : 'auto',
       foldRepeatCount: parseInt(document.getElementById('setting-fold-count').value) || 5,
       closeBehavior: segClose ? readSegmented(segClose) || 'ask' : 'ask',
+      mcpEnabled: document.getElementById('setting-mcp-enabled')?.checked ?? false,
+      mcpPort: parseInt(document.getElementById('setting-mcp-port')?.value) || 9876,
     };
 
     const merged = { ...(await getSettings()), ...settings };
     await saveSettings(merged);
     applyStyles(settings);
+    await applyMcpSettings(settings);
     emit('theme-changed', settings.theme);
     document.dispatchEvent(new CustomEvent('settings-applied', { detail: settings }));
     document.dispatchEvent(new CustomEvent('line-ending-changed', { detail: { lineEnding: settings.lineEnding } }));
     document.dispatchEvent(new CustomEvent('receive-newline-changed', { detail: { receiveNewline: settings.receiveNewline } }));
     document.dispatchEvent(new CustomEvent('fold-repeat-changed', { detail: { foldRepeatCount: settings.foldRepeatCount } }));
+  }
+
+  async function applyMcpSettings(s) {
+    if (s.mcpEnabled) {
+      await invoke('mcp_start', { port: s.mcpPort }).catch(() => {});
+    } else {
+      await invoke('mcp_stop').catch(() => {});
+    }
+    document.dispatchEvent(new CustomEvent('mcp-status-changed'));
   }
 
   async function open() {

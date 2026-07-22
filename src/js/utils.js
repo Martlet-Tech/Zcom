@@ -32,6 +32,8 @@ const defaults = {
   stopBits: 1,
   parity: 'none',
   flowControl: 'none',
+  mcpEnabled: false,
+  mcpPort: 9876,
 };
 
 export async function getSettings() {

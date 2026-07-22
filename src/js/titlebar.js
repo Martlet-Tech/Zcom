@@ -1,7 +1,8 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { message } from '@tauri-apps/plugin-dialog';
-import { getSettings } from './utils.js';
+import { invoke } from '@tauri-apps/api/core';
+import { getSettings, patchSettings } from './utils.js';
 
 let pinned = false;
 
@@ -17,7 +18,7 @@ export function initTitlebar() {
   async function handleClose() {
     const { closeBehavior } = await getSettings();
     if (closeBehavior === 'minimize') {
-      win.minimize();
+      win.hide();
       return;
     }
     if (closeBehavior === 'close') {
@@ -26,10 +27,10 @@ export function initTitlebar() {
     }
     const result = await message('关闭主窗口后，多字符串窗口也将关闭。', {
       title: 'Zcom调试助手',
-      buttons: { yes: '最小化', no: '关闭', cancel: '取消' }
+      buttons: { yes: '隐藏到托盘', no: '关闭', cancel: '取消' }
     });
-    if (result === '最小化') {
-      win.minimize();
+    if (result === '隐藏到托盘') {
+      win.hide();
     } else if (result === '关闭') {
       closeAll();
     }
@@ -47,6 +48,43 @@ export function initTitlebar() {
     pinBtn.style.color = pinned ? '#00b4d8' : '';
     pinBtn.style.opacity = pinned ? '1' : '0.5';
   });
+
+  const mcpBtn = document.getElementById('btn-mcp');
+  const mcpDot = mcpBtn?.querySelector('.mcp-dot');
+
+  async function updateMcpUI() {
+    if (!mcpBtn || !mcpDot) return;
+    try {
+      const status = await invoke('mcp_get_status');
+      if (status.running) {
+        mcpDot.className = 'mcp-dot on';
+        mcpBtn.title = `MCP 运行中 (端口 ${status.port}) · 点击关闭`;
+      } else {
+        mcpDot.className = 'mcp-dot';
+        mcpBtn.title = 'MCP 已停止 · 点击启用';
+      }
+    } catch {
+      mcpDot.className = 'mcp-dot';
+      mcpBtn.title = 'MCP 不可用';
+    }
+  }
+
+  if (mcpBtn) {
+    mcpBtn.addEventListener('click', async () => {
+      const { mcpEnabled, mcpPort } = await getSettings();
+      const newState = !mcpEnabled;
+      await patchSettings({ mcpEnabled: newState });
+      if (newState) {
+        await invoke('mcp_start', { port: mcpPort }).catch(() => {});
+      } else {
+        await invoke('mcp_stop').catch(() => {});
+      }
+      updateMcpUI();
+    });
+  }
+
+  document.addEventListener('mcp-status-changed', updateMcpUI);
+  updateMcpUI();
 
   return { getPinned: () => pinned };
 }

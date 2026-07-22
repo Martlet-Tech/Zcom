@@ -10,6 +10,10 @@
   <div id="titlebar">
     <div class="titlebar-drag" data-tauri-drag-region>
       <span class="titlebar-title">Zcom调试助手</span>
+      <button id="btn-mcp" class="mcp-btn" title="MCP 服务控制">
+        <span class="mcp-dot">●</span>
+        <span class="mcp-label">MCP</span>
+      </button>
     </div>
     <div class="titlebar-controls">
       <button id="btn-pin" class="title-btn" title="窗口置顶"><i data-lucide="pin"></i></button>
@@ -30,6 +34,7 @@
       <div id="help-menu-wrap" class="view-menu">
         <button id="btn-help" class="menu-btn">帮助</button>
         <div id="help-dropdown" class="view-dropdown">
+          <div class="view-item" data-help-action="mcp">MCP 服务</div>
           <div class="view-item" data-help-action="devtools">开发者工具</div>
           <div class="view-item" data-help-action="about">关于</div>
         </div>
@@ -195,10 +200,16 @@
         <div class="setting-row">
           <label>关闭行为:</label>
           <div class="segmented" data-setting="closeBehavior">
-            <button class="segmented-btn" data-value="minimize">最小化</button>
+            <button class="segmented-btn" data-value="minimize">隐藏到托盘</button>
             <button class="segmented-btn active" data-value="ask">询问</button>
             <button class="segmented-btn" data-value="close">关闭</button>
           </div>
+        </div>
+        <div class="setting-row">
+          <label>MCP 服务:</label>
+          <label class="chk-label"><input type="checkbox" id="setting-mcp-enabled" /> 启用</label>
+          <span class="label" style="margin-left:12px">端口:</span>
+          <input type="number" id="setting-mcp-port" value="9876" min="1024" max="65535" class="small-input" style="width:80px" />
         </div>
       </div>
       <div class="dialog-footer">
@@ -255,6 +266,23 @@
         <div style="flex:1"></div>
         <button id="btn-ss-cancel" class="small-btn">取消</button>
         <button id="btn-ss-ok" class="small-btn primary">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="mcp-prompt-overlay" class="overlay hidden">
+    <div id="mcp-prompt-dialog" class="dialog" style="width:560px;">
+      <div class="dialog-titlebar">
+        <span>MCP 服务 — AI Agent 配置指南</span>
+        <button class="dialog-close title-btn" id="btn-mcp-prompt-close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="dialog-body" style="padding:12px;">
+        <textarea id="mcp-prompt-text" readonly style="width:100%;height:340px;resize:none;font-family:var(--receive-font);font-size:12px;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:4px;padding:10px;white-space:pre;tab-size:2"></textarea>
+      </div>
+      <div class="dialog-footer">
+        <button id="btn-mcp-prompt-copy" class="small-btn primary">复制到剪贴板</button>
+        <div style="flex:1"></div>
+        <button id="btn-mcp-prompt-close2" class="small-btn">关闭</button>
       </div>
     </div>
   </div>

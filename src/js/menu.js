@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getVersion } from '@tauri-apps/api/app';
 import { getSettings, patchSettings } from './utils.js';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 
 let currentPort = null;
 let portOpen = false;
@@ -300,6 +301,48 @@ export function initHelpMenu() {
     wrap.classList.toggle('open');
   });
 
+  function buildMcpPrompt(port) {
+    return `# ZCOM MCP 服务 — AI Agent 使用指南
+
+ZCOM 是一款串口调试助手，内置 MCP（Model Context Protocol）服务。
+AI agent 可通过 MCP 协议实时读取串口数据、查询状态、发送指令。
+
+## 连接配置
+
+在 opencode.json（或 opencode.jsonc）中添加：
+
+\`\`\`json
+{
+  "mcp": {
+    "zcom": {
+      "type": "remote",
+      "url": "http://localhost:${port}/mcp"
+    }
+  }
+}
+\`\`\`
+
+## 可用资源
+
+- serial://receive/content  — 串口接收区的全部文本数据
+- serial://port           — 串口连接状态和参数
+
+## 可用工具
+
+- get_receive_content()    — 获取所有接收数据
+- get_port_status()        — 获取端口状态（端口名、波特率、连接状态、收发字节数）
+- send_serial_data(text, encoding?)  — 通过串口发送数据（encoding: utf-8 或 gbk）
+- clear_receive()          — 清空接收区
+
+## 使用示例
+
+你可以这样提问：
+- "看看串口收到了什么数据"
+- "分析这些报文是什么协议"
+- "发一条 AT 指令过去"
+- "检查串口连接是否正常"`;
+  }
+
   dd.addEventListener('click', async (e) => {
     const item = e.target.closest('.view-item');
     if (!item) return;
@@ -314,7 +357,32 @@ export function initHelpMenu() {
     } else if (action === 'about') {
       const ver = await getVersion();
       alert(`ZCOM 串口调试助手 v${ver}\n基于 Tauri + Rust`);
+    } else if (action === 'mcp') {
+      const { mcpPort } = await getSettings();
+      const textEl = document.getElementById('mcp-prompt-text');
+      const overlay = document.getElementById('mcp-prompt-overlay');
+      if (!textEl || !overlay) return;
+      textEl.value = buildMcpPrompt(mcpPort || 9876);
+      overlay.classList.remove('hidden');
     }
+  });
+
+  document.getElementById('btn-mcp-prompt-copy')?.addEventListener('click', () => {
+    const textEl = document.getElementById('mcp-prompt-text');
+    if (!textEl) return;
+    textEl.select();
+    navigator.clipboard.writeText(textEl.value).catch(() => {});
+  });
+
+  function closeMcpPrompt() {
+    const overlay = document.getElementById('mcp-prompt-overlay');
+    if (overlay) overlay.classList.add('hidden');
+  }
+
+  document.getElementById('btn-mcp-prompt-close')?.addEventListener('click', closeMcpPrompt);
+  document.getElementById('btn-mcp-prompt-close2')?.addEventListener('click', closeMcpPrompt);
+  document.getElementById('mcp-prompt-overlay')?.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeMcpPrompt();
   });
 }
 
