@@ -5,6 +5,11 @@ mod state;
 use state::SerialState;
 use tauri::Manager;
 
+#[tauri::command]
+fn open_devtools(webview: tauri::Webview) {
+    webview.open_devtools();
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     env_logger::init();
@@ -29,6 +34,7 @@ pub fn run() {
             serial_cmd::save_multi_strings,
             serial_cmd::decode_bytes,
             serial_cmd::set_baud_rate,
+            open_devtools,
         ])
         .setup(|app| {
             if let Some(w) = app.get_webview_window("main") {

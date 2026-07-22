@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>COM调试助手</title>
+  <title>Zcom调试助手</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
   <div id="titlebar">
     <div class="titlebar-drag" data-tauri-drag-region>
-      <span class="titlebar-title">COM调试助手</span>
+      <span class="titlebar-title">Zcom调试助手</span>
     </div>
     <div class="titlebar-controls">
       <button id="btn-pin" class="title-btn" title="窗口置顶">📌</button>
@@ -27,7 +27,13 @@
         <button id="btn-view" class="menu-btn">视图</button>
         <div id="view-dropdown" class="view-dropdown"></div>
       </div>
-      <button id="btn-about" class="menu-btn">帮助</button>
+      <div id="help-menu-wrap" class="view-menu">
+        <button id="btn-help" class="menu-btn">帮助</button>
+        <div id="help-dropdown" class="view-dropdown">
+          <div class="view-item" data-help-action="devtools">开发者工具</div>
+          <div class="view-item" data-help-action="about">关于</div>
+        </div>
+      </div>
     </div>
     <div class="menu-right">
       <div id="com-select" class="custom-select" tabindex="0">
@@ -185,6 +191,14 @@
         <div class="setting-row">
           <label>重复折叠阈值:</label>
           <input type="number" id="setting-fold-count" value="5" min="2" max="100" class="small-input" />
+        </div>
+        <div class="setting-row">
+          <label>关闭行为:</label>
+          <div class="segmented" data-setting="closeBehavior">
+            <button class="segmented-btn" data-value="minimize">最小化</button>
+            <button class="segmented-btn active" data-value="ask">询问</button>
+            <button class="segmented-btn" data-value="close">关闭</button>
+          </div>
         </div>
       </div>
       <div class="dialog-footer">

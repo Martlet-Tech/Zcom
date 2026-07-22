@@ -40,9 +40,11 @@ async function loadDialogValues() {
   const segTheme = document.querySelector('.segmented[data-setting="theme"]');
   const segLineEnd = document.querySelector('.segmented[data-setting="lineEnding"]');
   const segReceive = document.querySelector('.segmented[data-setting="receiveNewline"]');
+  const segClose = document.querySelector('.segmented[data-setting="closeBehavior"]');
   if (segTheme) initSegmented(segTheme, ss.theme);
   if (segLineEnd) initSegmented(segLineEnd, ss.lineEnding);
   if (segReceive) initSegmented(segReceive, ss.receiveNewline);
+  if (segClose) initSegmented(segClose, ss.closeBehavior);
   const foldCount = document.getElementById('setting-fold-count');
   if (foldCount) foldCount.value = ss.foldRepeatCount;
 }
@@ -72,10 +74,12 @@ export async function initSettings() {
   const segTheme = document.querySelector('.segmented[data-setting="theme"]');
   const segLineEnd = document.querySelector('.segmented[data-setting="lineEnding"]');
   const segReceive = document.querySelector('.segmented[data-setting="receiveNewline"]');
+  const segClose = document.querySelector('.segmented[data-setting="closeBehavior"]');
 
   setupSegmentedListener(segTheme);
   setupSegmentedListener(segLineEnd);
   setupSegmentedListener(segReceive);
+  setupSegmentedListener(segClose);
 
   const s = await getSettings();
   applyStyles(s);
@@ -107,6 +111,7 @@ export async function initSettings() {
       lineEnding: segLineEnd ? readSegmented(segLineEnd) || 'crlf' : 'crlf',
       receiveNewline: segReceive ? readSegmented(segReceive) || 'auto' : 'auto',
       foldRepeatCount: parseInt(document.getElementById('setting-fold-count').value) || 5,
+      closeBehavior: segClose ? readSegmented(segClose) || 'ask' : 'ask',
     };
 
     const merged = { ...(await getSettings()), ...settings };

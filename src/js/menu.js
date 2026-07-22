@@ -19,7 +19,6 @@ export function initMenu() {
   const toggleBtn = document.getElementById('btn-toggle-port');
   const statusEl = document.getElementById('port-status');
   const settingsBtn = document.getElementById('btn-settings');
-  const aboutBtn = document.getElementById('btn-about');
 
   function setComDisabled(d) {
     comEl.classList.toggle('disabled', d);
@@ -275,11 +274,6 @@ export function initMenu() {
     if (e.target === ssOverlay) closeSerialSettings();
   });
 
-  aboutBtn.addEventListener('click', async () => {
-    const ver = await getVersion();
-    alert(`ZCOM 串口调试助手 v${ver}\n基于 Tauri + Rust`);
-  });
-
   document.addEventListener('port-closed', () => {
     portOpen = false;
     toggleBtn.textContent = '打开';
@@ -287,6 +281,40 @@ export function initMenu() {
     statusEl.title = '未连接';
     setComDisabled(false);
     document.dispatchEvent(new CustomEvent('port-state-change', { detail: { open: false } }));
+  });
+}
+
+export function initHelpMenu() {
+  const wrap = document.getElementById('help-menu-wrap');
+  const btn = document.getElementById('btn-help');
+  const dd = document.getElementById('help-dropdown');
+
+  document.addEventListener('click', (e) => {
+    if (!wrap.contains(e.target)) {
+      wrap.classList.remove('open');
+    }
+  });
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    wrap.classList.toggle('open');
+  });
+
+  dd.addEventListener('click', async (e) => {
+    const item = e.target.closest('.view-item');
+    if (!item) return;
+    wrap.classList.remove('open');
+    const action = item.dataset.helpAction;
+    if (action === 'devtools') {
+      try {
+        await invoke('open_devtools');
+      } catch (err) {
+        console.error('open_devtools error:', err);
+      }
+    } else if (action === 'about') {
+      const ver = await getVersion();
+      alert(`ZCOM 串口调试助手 v${ver}\n基于 Tauri + Rust`);
+    }
   });
 }
 

@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { initTitlebar } from './titlebar.js';
-import { initMenu } from './menu.js';
+import { initMenu, initHelpMenu } from './menu.js';
 import { initReceive, clearReceive, setHexDisplay, setShowTimestamp, applyReceiveStyle } from './receive.js';
 import { initBottom } from './bottom.js';
 import { initStatusBar } from './statusbar.js';
@@ -11,8 +11,11 @@ import { getSettings } from './utils.js';
 document.addEventListener('DOMContentLoaded', async () => {
   const settings = await getSettings();
 
+  document.addEventListener('contextmenu', (e) => e.preventDefault());
+
   initTitlebar();
   initMenu();
+  initHelpMenu();
   await initReceive();
   await initBottom();
   await initStatusBar();

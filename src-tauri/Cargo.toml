@@ -1,6 +1,6 @@
 [package]
 name = "zcom"
-version = "0.6.0"
+version = "0.6.1"
 description = "High performance serial debug assistant"
 authors = ["zt"]
 edition = "2021"
