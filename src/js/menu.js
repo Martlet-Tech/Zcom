@@ -91,10 +91,17 @@ export function initMenu() {
 
   refresh();
 
+  function updateBaudSelection(rate) {
+    baudText.textContent = String(rate);
+    baudDropdown.querySelectorAll('.cs-option').forEach(o => {
+      o.classList.toggle('selected', parseInt(o.dataset.value) === rate);
+    });
+  }
+
   (async () => {
     const saved = await getSettings();
     baudRate = saved.baudRate || 115200;
-    baudSelect.value = String(baudRate);
+    updateBaudSelection(baudRate);
     charSize = saved.charSize || 8;
     stopBits = saved.stopBits || 1;
     parity = saved.parity || 'none';
@@ -136,12 +143,32 @@ export function initMenu() {
     if (!comEl.contains(e.target)) {
       closeComDropdown();
     }
+    if (!baudSelect.contains(e.target)) {
+      closeBaudDropdown();
+    }
   });
 
-  refreshBtn.addEventListener('click', refresh);
+  const BAUD_RATES = [300, 1200, 2400, 4800, 9600, 14400, 19200, 28800, 38400, 56000, 57600, 115200, 230400, 460800, 921600];
 
-  baudSelect.addEventListener('change', async () => {
-    baudRate = parseInt(baudSelect.value);
+  const baudText = document.getElementById('baud-select-text');
+  const baudDropdown = document.getElementById('baud-select-dropdown');
+
+  function closeBaudDropdown() {
+    baudSelect.classList.remove('open');
+  }
+
+  function toggleBaudDropdown() {
+    baudSelect.classList.toggle('open');
+  }
+
+  async function selectBaudOption(el) {
+    if (!el) return;
+    baudDropdown.querySelectorAll('.cs-option.selected').forEach(e => e.classList.remove('selected'));
+    el.classList.add('selected');
+    const val = parseInt(el.dataset.value);
+    baudRate = val;
+    baudText.textContent = String(val);
+    closeBaudDropdown();
     await patchSettings({ baudRate });
 
     if (portOpen) {
@@ -164,7 +191,49 @@ export function initMenu() {
         document.dispatchEvent(new CustomEvent('port-state-change', { detail: { open: false } }));
       }
     }
+  }
+
+  BAUD_RATES.forEach(rate => {
+    const opt = document.createElement('div');
+    opt.className = 'cs-option';
+    opt.textContent = String(rate);
+    opt.dataset.value = String(rate);
+    if (rate === baudRate) opt.classList.add('selected');
+    opt.addEventListener('click', () => selectBaudOption(opt));
+    baudDropdown.appendChild(opt);
   });
+
+  baudSelect.addEventListener('click', (e) => {
+    if (e.target.closest('.cs-dropdown')) return;
+    toggleBaudDropdown();
+  });
+
+  baudSelect.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggleBaudDropdown();
+    } else if (e.key === 'Escape') {
+      closeBaudDropdown();
+    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!baudSelect.classList.contains('open')) {
+        baudSelect.classList.add('open');
+      }
+      const items = [...baudDropdown.querySelectorAll('.cs-option')];
+      if (!items.length) return;
+      const sel = baudDropdown.querySelector('.cs-option.selected');
+      const idx = items.indexOf(sel);
+      const next = e.key === 'ArrowDown'
+        ? Math.min(idx + 1, items.length - 1)
+        : Math.max(idx - 1, 0);
+      items.forEach(o => o.classList.remove('selected'));
+      items[next].classList.add('selected');
+      baudText.textContent = items[next].textContent;
+      baudRate = parseInt(items[next].dataset.value);
+    }
+  });
+
+  refreshBtn.addEventListener('click', refresh);
 
   toggleBtn.addEventListener('click', async () => {
     if (portOpen) {
