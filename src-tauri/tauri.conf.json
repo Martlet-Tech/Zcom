@@ -1,7 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "ZCOM",
-  "version": "0.8.1",
   "identifier": "com.zcom.app",
   "build": {
     "frontendDist": "../dist",
