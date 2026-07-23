@@ -1,3 +1,4 @@
+// bottom panel logic
 import { invoke } from '@tauri-apps/api/core';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile, readFile } from '@tauri-apps/plugin-fs';
