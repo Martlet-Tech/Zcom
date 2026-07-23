@@ -9,6 +9,7 @@ use axum::{
 };
 use serde_json::{json, Value};
 use std::sync::Arc;
+use tauri::Emitter;
 use tokio::sync::{oneshot, Mutex};
 
 pub struct McpServerHandle {
@@ -32,6 +33,7 @@ impl McpServerHandle {
 struct AppState {
     buffer: ReceiveBuffer,
     serial: SerialState,
+    app_handle: tauri::AppHandle,
 }
 
 impl Clone for AppState {
@@ -39,6 +41,7 @@ impl Clone for AppState {
         Self {
             buffer: self.buffer.clone(),
             serial: self.serial.clone(),
+            app_handle: self.app_handle.clone(),
         }
     }
 }
@@ -244,7 +247,7 @@ async fn handle_tools_call(state: &AppState, body: &Value, id: Value) -> (Status
             }
         }
         "clear_receive" => {
-            state.buffer.clear().await;
+            let _ = state.app_handle.emit("clear-receive", ());
             let resp = jsonrpc_success(id, json!({
                 "content": [{
                     "type": "text",
@@ -289,6 +292,7 @@ async fn handle_mcp(
 
 #[tauri::command]
 pub async fn mcp_start(
+    app_handle: tauri::AppHandle,
     handle: tauri::State<'_, McpServerHandle>,
     buffer: tauri::State<'_, ReceiveBuffer>,
     serial: tauri::State<'_, SerialState>,
@@ -303,6 +307,7 @@ pub async fn mcp_start(
     let state = AppState {
         buffer: (*buffer).clone(),
         serial: (*serial).clone(),
+        app_handle: app_handle.clone(),
     };
 
     let app = axum::Router::new()

@@ -1,5 +1,6 @@
 import { initIcons } from './icons.js';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { initTitlebar } from './titlebar.js';
 import { initMenu, initHelpMenu } from './menu.js';
 import { initReceive, clearReceive, setHexDisplay, setShowTimestamp, applyReceiveStyle } from './receive.js';
@@ -25,6 +26,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await initSettings();
 
   document.addEventListener('clear-receive', clearReceive);
+  listen('clear-receive', clearReceive);
 
   document.addEventListener('hex-display-change', (e) => {
     setHexDisplay(e.detail.on);
