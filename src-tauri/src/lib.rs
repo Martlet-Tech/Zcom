@@ -38,6 +38,7 @@ pub fn run() {
             serial_cmd::send_data,
             serial_cmd::send_data_raw,
             serial_cmd::send_raw_bytes,
+            serial_cmd::reset_io_counters,
             serial_cmd::get_port_info,
             serial_cmd::calculate_checksum,
             serial_cmd::set_baud_rate,

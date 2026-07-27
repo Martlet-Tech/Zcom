@@ -522,6 +522,7 @@ export async function clearReceive() {
   await flushMcp();
   clearReceiveLines();
   invoke('mcp_clear_buffer').catch(() => {});
+  invoke('reset_io_counters').catch(() => {});
 }
 
 async function flushMcp() {

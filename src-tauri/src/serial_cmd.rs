@@ -311,6 +311,15 @@ pub async fn send_raw_bytes(
 }
 
 #[tauri::command]
+pub async fn reset_io_counters(
+    state: tauri::State<'_, SerialState>,
+) -> Result<(), String> {
+    state.tx_bytes.store(0, Ordering::SeqCst);
+    state.rx_bytes.store(0, Ordering::SeqCst);
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn get_port_info(
     state: tauri::State<'_, SerialState>,
 ) -> Result<serde_json::Value, String> {
