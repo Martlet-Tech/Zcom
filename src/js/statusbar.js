@@ -47,12 +47,56 @@ export async function initStatusBar() {
     document.dispatchEvent(new CustomEvent('timestamp-change', { detail: { on: chkTimestamp.checked } }));
   }, 0);
 
+  statTx.dataset.mode = 'fmt';
+  statRx.dataset.mode = 'fmt';
+  statTx.title = '双击可复制';
+  statRx.title = '双击可复制';
+
+  function displayTx(raw) {
+    statTx.dataset.raw = raw;
+    statTx.textContent = statTx.dataset.mode === 'raw'
+      ? `Tx: ${raw}` : `Tx: ${formatByteCount(raw)}`;
+  }
+  function displayRx(raw) {
+    statRx.dataset.raw = raw;
+    statRx.textContent = statRx.dataset.mode === 'raw'
+      ? `Rx: ${raw}` : `Rx: ${formatByteCount(raw)}`;
+  }
+
+  let txClickTimer, rxClickTimer;
+
+  statTx.addEventListener('click', () => {
+    if (txClickTimer) { clearTimeout(txClickTimer); txClickTimer = null; return; }
+    txClickTimer = setTimeout(() => {
+      txClickTimer = null;
+      statTx.dataset.mode = statTx.dataset.mode === 'raw' ? 'fmt' : 'raw';
+      displayTx(+statTx.dataset.raw);
+    }, 300);
+  });
+  statTx.addEventListener('dblclick', () => {
+    if (txClickTimer) { clearTimeout(txClickTimer); txClickTimer = null; }
+    navigator.clipboard.writeText(statTx.textContent.replace('Tx: ', ''));
+  });
+
+  statRx.addEventListener('click', () => {
+    if (rxClickTimer) { clearTimeout(rxClickTimer); rxClickTimer = null; return; }
+    rxClickTimer = setTimeout(() => {
+      rxClickTimer = null;
+      statRx.dataset.mode = statRx.dataset.mode === 'raw' ? 'fmt' : 'raw';
+      displayRx(+statRx.dataset.raw);
+    }, 300);
+  });
+  statRx.addEventListener('dblclick', () => {
+    if (rxClickTimer) { clearTimeout(rxClickTimer); rxClickTimer = null; }
+    navigator.clipboard.writeText(statRx.textContent.replace('Rx: ', ''));
+  });
+
   setInterval(async () => {
     if (!portConnected) return;
     try {
       const info = await invoke('get_port_info');
-      statTx.textContent = `Tx: ${formatByteCount(info.tx)}`;
-      statRx.textContent = `Rx: ${formatByteCount(info.rx)}`;
+      displayTx(info.tx);
+      displayRx(info.rx);
       portInfo.innerHTML = `${info.name} 已连接 ${info.baud} ${info.dataBits}N${info.stopBits}`;
     } catch {
       // ignore

@@ -587,6 +587,7 @@ select:focus, input:focus, textarea:focus {
 #stat-tx, #stat-rx {
   font-family: 'Consolas', monospace;
   color: var(--fg-dim);
+  cursor: pointer;
 }
 #port-info {
   margin-left: auto;
