@@ -349,6 +349,7 @@ select:focus, input:focus, textarea:focus {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  position: relative;
   background: var(--receive-bg);
   padding: 4px 0;
   font-family: var(--receive-font);
@@ -356,6 +357,56 @@ select:focus, input:focus, textarea:focus {
   color: var(--receive-color);
   line-height: 20px; /* must be integer device px at 125%/150%/175% DPI (multiple of 4) */
 }
+#zoom-bar {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  z-index: 10;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  font-size: 12px;
+  opacity: 0.92;
+  pointer-events: none;
+  white-space: nowrap;
+}
+#zoom-bar.hidden { display: none; }
+.zoom-bar-btn {
+  pointer-events: auto;
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: var(--fg);
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 6px;
+  border-radius: 3px;
+}
+.zoom-bar-btn:hover { background: var(--bg3); }
+.zoom-bar-sep {
+  color: var(--fg-dim);
+  opacity: 0.35;
+}
+.zoom-bar-label {
+  min-width: 44px;
+  text-align: center;
+  pointer-events: none;
+}
+.zoom-bar-reset {
+  pointer-events: auto;
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 11px;
+  padding: 0 4px;
+}
+.zoom-bar-reset:hover { color: var(--accent2); }
 #receive-area::-webkit-scrollbar {
   width: 8px;
 }
