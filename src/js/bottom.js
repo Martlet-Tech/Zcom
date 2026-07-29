@@ -10,8 +10,17 @@ let fileSending = false;
 let fileSendAbort = false;
 let selectedFilePath = null;
 let lineEnding = 'crlf';
+let sendNewline = 'raw';
 
 const LINE_ENDING_MAP = { none: '', cr: '\r', lf: '\n', crlf: '\r\n' };
+
+function normalizeLineEndings(text, mode) {
+  if (mode === 'raw') return text;
+  if (mode === 'lf') return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  if (mode === 'cr') return text.replace(/\r\n/g, '\r').replace(/\n/g, '\r');
+  if (mode === 'crlf') return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/\n/g, '\r\n');
+  return text;
+}
 
 const MIN_SEND_HEIGHT = 32;
 
@@ -34,6 +43,7 @@ export async function initBottom() {
 
   const saved = await getSettings();
   lineEnding = saved.lineEnding || 'crlf';
+  sendNewline = saved.sendNewline || 'raw';
   sendText.value = saved.sendText || '';
   chkHexSend.checked = saved.hexSend || false;
   chkChecksum.checked = saved.checksumOn || false;
@@ -219,8 +229,26 @@ export async function initBottom() {
     if (chkChecksum.checked) calcChecksum();
   });
 
+  sendText.addEventListener('paste', (e) => {
+    if (sendNewline === 'raw') return;
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text/plain');
+    const normalized = normalizeLineEndings(pasted, sendNewline);
+    const start = sendText.selectionStart;
+    const end = sendText.selectionEnd;
+    const before = sendText.value.substring(0, start);
+    const after = sendText.value.substring(end);
+    sendText.value = before + normalized + after;
+    sendText.selectionStart = sendText.selectionEnd = start + normalized.length;
+    sendText.dispatchEvent(new Event('input'));
+  });
+
   document.addEventListener('line-ending-changed', (e) => {
     lineEnding = e.detail.lineEnding;
+  });
+
+  document.addEventListener('send-newline-changed', (e) => {
+    sendNewline = e.detail.sendNewline;
   });
 
   sendBtn.addEventListener('click', async () => {
@@ -231,8 +259,11 @@ export async function initBottom() {
     const hexMode = chkHexSend.checked;
     const encoding = document.getElementById('encoding-select')?.value || 'utf-8';
 
-    if (!hexMode && lineEnding !== 'none') {
-      text += LINE_ENDING_MAP[lineEnding] || '';
+    if (!hexMode) {
+      text = normalizeLineEndings(text, sendNewline);
+      if (lineEnding !== 'none') {
+        text += LINE_ENDING_MAP[lineEnding] || '';
+      }
     }
 
     if (chkChecksum.checked) {
@@ -253,8 +284,20 @@ export async function initBottom() {
   });
 
   sendText.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && e.ctrlKey) {
-      sendBtn.click();
+    if (e.key === 'Enter') {
+      if (e.ctrlKey) {
+        sendBtn.click();
+      } else if (sendNewline !== 'raw') {
+        e.preventDefault();
+        const nl = LINE_ENDING_MAP[sendNewline] || '\n';
+        const start = sendText.selectionStart;
+        const end = sendText.selectionEnd;
+        const before = sendText.value.substring(0, start);
+        const after = sendText.value.substring(end);
+        sendText.value = before + nl + after;
+        sendText.selectionStart = sendText.selectionEnd = start + nl.length;
+        sendText.dispatchEvent(new Event('input'));
+      }
     }
   });
 }

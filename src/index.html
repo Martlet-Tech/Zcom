@@ -172,7 +172,16 @@
           <input type="color" id="setting-bg-color" value="#1a1a2e" />
         </div>
         <div class="setting-row">
-          <label>发送换行符:</label>
+          <label>发送区换行:</label>
+          <div class="segmented" data-setting="sendNewline">
+            <button class="segmented-btn active" data-value="raw">原始</button>
+            <button class="segmented-btn" data-value="lf">LF</button>
+            <button class="segmented-btn" data-value="cr">CR</button>
+            <button class="segmented-btn" data-value="crlf">CR+LF</button>
+          </div>
+        </div>
+        <div class="setting-row">
+          <label>发送时附加:</label>
           <div class="segmented" data-setting="lineEnding">
             <button class="segmented-btn" data-value="none">无</button>
             <button class="segmented-btn" data-value="cr">CR</button>

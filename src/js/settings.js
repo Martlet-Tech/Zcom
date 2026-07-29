@@ -39,10 +39,12 @@ async function loadDialogValues() {
   document.getElementById('setting-receive-color').value = ss.receiveColor;
   document.getElementById('setting-bg-color').value = ss.bgColor;
   const segTheme = document.querySelector('.segmented[data-setting="theme"]');
+  const segSendNewline = document.querySelector('.segmented[data-setting="sendNewline"]');
   const segLineEnd = document.querySelector('.segmented[data-setting="lineEnding"]');
   const segReceive = document.querySelector('.segmented[data-setting="receiveNewline"]');
   const segClose = document.querySelector('.segmented[data-setting="closeBehavior"]');
   if (segTheme) initSegmented(segTheme, ss.theme);
+  if (segSendNewline) initSegmented(segSendNewline, ss.sendNewline);
   if (segLineEnd) initSegmented(segLineEnd, ss.lineEnding);
   if (segReceive) initSegmented(segReceive, ss.receiveNewline);
   if (segClose) initSegmented(segClose, ss.closeBehavior);
@@ -77,11 +79,13 @@ export async function initSettings() {
   const bgColor = document.getElementById('setting-bg-color');
 
   const segTheme = document.querySelector('.segmented[data-setting="theme"]');
+  const segSendNewline = document.querySelector('.segmented[data-setting="sendNewline"]');
   const segLineEnd = document.querySelector('.segmented[data-setting="lineEnding"]');
   const segReceive = document.querySelector('.segmented[data-setting="receiveNewline"]');
   const segClose = document.querySelector('.segmented[data-setting="closeBehavior"]');
 
   setupSegmentedListener(segTheme);
+  setupSegmentedListener(segSendNewline);
   setupSegmentedListener(segLineEnd);
   setupSegmentedListener(segReceive);
   setupSegmentedListener(segClose);
@@ -91,6 +95,7 @@ export async function initSettings() {
   await applyMcpSettings(s);
   emit('theme-changed', s.theme);
   document.dispatchEvent(new CustomEvent('settings-applied', { detail: s }));
+  document.dispatchEvent(new CustomEvent('send-newline-changed', { detail: { sendNewline: s.sendNewline } }));
   document.dispatchEvent(new CustomEvent('line-ending-changed', { detail: { lineEnding: s.lineEnding } }));
   document.dispatchEvent(new CustomEvent('receive-newline-changed', { detail: { receiveNewline: s.receiveNewline } }));
   document.dispatchEvent(new CustomEvent('fold-repeat-changed', { detail: { foldRepeatCount: s.foldRepeatCount } }));
@@ -114,6 +119,7 @@ export async function initSettings() {
       receiveColor: receiveColor.value,
       bgColor: bgColor.value,
       theme: segTheme ? readSegmented(segTheme) || 'dark' : 'dark',
+      sendNewline: segSendNewline ? readSegmented(segSendNewline) || 'raw' : 'raw',
       lineEnding: segLineEnd ? readSegmented(segLineEnd) || 'crlf' : 'crlf',
       receiveNewline: segReceive ? readSegmented(segReceive) || 'auto' : 'auto',
       foldRepeatCount: parseInt(document.getElementById('setting-fold-count').value) || 5,
@@ -128,6 +134,7 @@ export async function initSettings() {
     await applyMcpSettings(settings);
     emit('theme-changed', settings.theme);
     document.dispatchEvent(new CustomEvent('settings-applied', { detail: settings }));
+    document.dispatchEvent(new CustomEvent('send-newline-changed', { detail: { sendNewline: settings.sendNewline } }));
     document.dispatchEvent(new CustomEvent('line-ending-changed', { detail: { lineEnding: settings.lineEnding } }));
     document.dispatchEvent(new CustomEvent('receive-newline-changed', { detail: { receiveNewline: settings.receiveNewline } }));
     document.dispatchEvent(new CustomEvent('fold-repeat-changed', { detail: { foldRepeatCount: settings.foldRepeatCount } }));

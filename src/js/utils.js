@@ -24,6 +24,7 @@ const defaults = {
   theme: 'dark',
   baudRate: 115200,
   lineEnding: 'crlf',
+  sendNewline: 'raw',
   receiveNewline: 'auto',
   foldRepeatCount: 5,
   sendAreaHeight: 80,
