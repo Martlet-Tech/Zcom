@@ -10,6 +10,7 @@ export async function initStatusBar() {
   const encSelect = document.getElementById('encoding-select');
   const statTx = document.getElementById('stat-tx');
   const statRx = document.getElementById('stat-rx');
+  const statSel = document.getElementById('stat-sel');
   const portInfo = document.getElementById('port-info');
 
   document.addEventListener('port-state-change', (e) => {
@@ -102,4 +103,14 @@ export async function initStatusBar() {
       // ignore
     }
   }, 500);
+
+  document.addEventListener('selection-bytes-changed', (e) => {
+    const bytes = e.detail.bytes;
+    if (bytes !== null) {
+      statSel.textContent = `Sel: ${formatByteCount(bytes)}`;
+      statSel.classList.remove('hidden');
+    } else {
+      statSel.classList.add('hidden');
+    }
+  });
 }

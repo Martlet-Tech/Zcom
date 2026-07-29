@@ -563,6 +563,19 @@ export async function initReceive() {
     foldThreshold = e.detail.foldRepeatCount || 5;
   });
 
+  document.addEventListener('selectionchange', () => {
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+      const range = sel.getRangeAt(0);
+      if (receiveContent && receiveContent.contains(range.commonAncestorContainer)) {
+        const bytes = new TextEncoder().encode(sel.toString()).length;
+        document.dispatchEvent(new CustomEvent('selection-bytes-changed', { detail: { bytes } }));
+        return;
+      }
+    }
+    document.dispatchEvent(new CustomEvent('selection-bytes-changed', { detail: { bytes: null } }));
+  });
+
   mcpFlushTimer = setInterval(flushMcp, 1000);
 }
 

@@ -635,10 +635,13 @@ select:focus, input:focus, textarea:focus {
   gap: 10px;
   white-space: nowrap;
 }
-#stat-tx, #stat-rx {
+#stat-tx, #stat-rx, .stat-sel {
   font-family: 'Consolas', monospace;
   color: var(--fg-dim);
   cursor: pointer;
+}
+.stat-sel {
+  cursor: default;
 }
 #port-info {
   margin-left: auto;
