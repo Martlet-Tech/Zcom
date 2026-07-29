@@ -15,6 +15,7 @@ export async function initStatusBar() {
 
   document.addEventListener('port-state-change', (e) => {
     portConnected = e.detail.open;
+    if (!e.detail.open) portInfo.innerHTML = '<span>未连接</span>';
   });
 
   const saved = await getSettings();

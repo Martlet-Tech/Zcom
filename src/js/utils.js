@@ -25,6 +25,8 @@ const defaults = {
   baudRate: 115200,
   lineEnding: 'crlf',
   sendNewline: 'raw',
+  sendChunkInterval: 10,
+  sendChunkSize: 1024,
   receiveNewline: 'auto',
   foldRepeatCount: 5,
   sendAreaHeight: 80,

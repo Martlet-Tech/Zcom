@@ -87,15 +87,11 @@ export function initTitlebar() {
   updateMcpUI();
 
   document.addEventListener('port-state-change', async (e) => {
-    const titleEl = document.querySelector('.titlebar-title');
     if (e.detail.open) {
       const { currentPort } = await getSettings();
-      const portName = currentPort || '串口';
-      invoke('set_window_title', { title: portName });
-      if (titleEl) titleEl.textContent = portName;
+      invoke('set_window_title', { title: currentPort || '串口' });
     } else {
       invoke('set_window_title', { title: 'Zcom调试助手' });
-      if (titleEl) titleEl.textContent = 'Zcom调试助手';
     }
   });
 

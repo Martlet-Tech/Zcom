@@ -244,6 +244,7 @@ pub async fn send_data_internal(
     let mut port = state.port.lock().await;
     let port = port.as_mut().ok_or("Port not open")?;
     port.write_all(&bytes).map_err(|e| format!("Write error: {}", e))?;
+    port.flush().map_err(|e| format!("Flush error: {}", e))?;
     state.tx_bytes.fetch_add(bytes.len() as u64, Ordering::SeqCst);
 
     Ok(bytes.iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(" "))
@@ -306,6 +307,7 @@ pub async fn send_raw_bytes(
     let mut port = state.port.lock().await;
     let port = port.as_mut().ok_or("Port not open")?;
     port.write_all(&bytes).map_err(|e| format!("Write error: {}", e))?;
+    port.flush().map_err(|e| format!("Flush error: {}", e))?;
     state.tx_bytes.fetch_add(bytes.len() as u64, Ordering::SeqCst);
     Ok(())
 }

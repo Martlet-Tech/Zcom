@@ -50,6 +50,10 @@ async function loadDialogValues() {
   if (segClose) initSegmented(segClose, ss.closeBehavior);
   const foldCount = document.getElementById('setting-fold-count');
   if (foldCount) foldCount.value = ss.foldRepeatCount;
+  const chunkInterval = document.getElementById('setting-chunk-interval');
+  if (chunkInterval) chunkInterval.value = ss.sendChunkInterval;
+  const chunkSize = document.getElementById('setting-chunk-size');
+  if (chunkSize) chunkSize.value = ss.sendChunkSize;
   const mcpEnabled = document.getElementById('setting-mcp-enabled');
   if (mcpEnabled) mcpEnabled.checked = ss.mcpEnabled;
   const mcpPort = document.getElementById('setting-mcp-port');
@@ -122,6 +126,8 @@ export async function initSettings() {
       sendNewline: segSendNewline ? readSegmented(segSendNewline) || 'raw' : 'raw',
       lineEnding: segLineEnd ? readSegmented(segLineEnd) || 'crlf' : 'crlf',
       receiveNewline: segReceive ? readSegmented(segReceive) || 'auto' : 'auto',
+      sendChunkInterval: parseInt(document.getElementById('setting-chunk-interval')?.value) ?? 10,
+      sendChunkSize: parseInt(document.getElementById('setting-chunk-size')?.value) ?? 1024,
       foldRepeatCount: parseInt(document.getElementById('setting-fold-count').value) || 5,
       closeBehavior: segClose ? readSegmented(segClose) || 'ask' : 'ask',
       mcpEnabled: document.getElementById('setting-mcp-enabled')?.checked ?? false,

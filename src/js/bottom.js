@@ -29,6 +29,7 @@ export async function initBottom() {
   const filePathEl = document.getElementById('file-path');
   const fileSendBtn = document.getElementById('btn-file-send');
   const fileSaveBtn = document.getElementById('btn-file-save');
+  const fileStat = document.getElementById('file-stat');
   const clearBtn = document.getElementById('btn-clear-receive');
   const sendBtn = document.getElementById('btn-send');
   const sendText = document.getElementById('send-text');
@@ -94,7 +95,7 @@ export async function initBottom() {
   document.addEventListener('port-state-change', (e) => {
     portOpen = e.detail.open;
     sendBtn.disabled = !portOpen;
-    fileSendBtn.disabled = !portOpen || !selectedFilePath;
+    fileSendBtn.disabled = !portOpen || !filePathEl.value;
   });
 
   fileOpenBtn.addEventListener('click', async () => {
@@ -102,8 +103,9 @@ export async function initBottom() {
       const path = await open({ multiple: false, filters: [{ name: 'All Files', extensions: ['*'] }] });
       if (path) {
         selectedFilePath = path;
-        filePathEl.textContent = path;
+        filePathEl.value = path;
         fileSendBtn.disabled = !portOpen;
+        fileStat.classList.add('hidden');
       }
     } catch (e) {
       console.error('File open error:', e);
@@ -117,28 +119,54 @@ export async function initBottom() {
       fileSending = false;
       return;
     }
-    if (!selectedFilePath || !portOpen) return;
+    const filePath = filePathEl.value.trim();
+    if (!filePath || !portOpen) return;
+
+    const { sendChunkInterval, sendChunkSize } = await getSettings();
 
     fileSending = true;
     fileSendAbort = false;
+    selectedFilePath = filePath;
     setButtonIcon(fileSendBtn, Square, '中止');
+    fileStat.textContent = '0%';
+    fileStat.classList.remove('hidden');
 
+    const startTime = Date.now();
+    let total = 0;
     try {
-      const content = await readFile(selectedFilePath);
+      const content = await readFile(filePath);
       const bytes = new Uint8Array(content);
-      const chunkSize = 1024;
-      for (let i = 0; i < bytes.length && !fileSendAbort; i += chunkSize) {
-        const chunk = Array.from(bytes.slice(i, i + chunkSize));
-        await invoke('send_raw_bytes', { bytes: chunk });
-        await new Promise(r => setTimeout(r, 10));
+      total = bytes.length;
+
+      if (sendChunkInterval < 0) {
+        const all = Array.from(bytes);
+        await invoke('send_raw_bytes', { bytes: all });
+        fileStat.textContent = '100%';
+      } else {
+        for (let i = 0; i < total && !fileSendAbort; i += sendChunkSize) {
+          const chunk = Array.from(bytes.slice(i, i + sendChunkSize));
+          await invoke('send_raw_bytes', { bytes: chunk });
+          const pct = Math.round(Math.min(i + sendChunkSize, total) / total * 100);
+          fileStat.textContent = pct + '%';
+          if (sendChunkInterval > 0) {
+            await new Promise(r => setTimeout(r, sendChunkInterval));
+          }
+        }
       }
     } catch (e) {
       console.error('File send error:', e);
     }
 
     fileSending = false;
+    const aborted = fileSendAbort;
     fileSendAbort = false;
     setButtonIcon(fileSendBtn, Upload, '发送文件');
+
+    if (!aborted && total > 0) {
+      const elapsed = (Date.now() - startTime) / 1000;
+      const avgSpeed = (total / elapsed / 1024).toFixed(1);
+      fileStat.textContent = `用时 ${elapsed.toFixed(2)}s  平均 ${avgSpeed} KB/s`;
+    }
   });
 
   fileSaveBtn.addEventListener('click', async () => {
@@ -227,6 +255,12 @@ export async function initBottom() {
   sendText.addEventListener('input', async () => {
     await patchSettings({ sendText: sendText.value });
     if (chkChecksum.checked) calcChecksum();
+  });
+
+  filePathEl.addEventListener('input', () => {
+    selectedFilePath = filePathEl.value || null;
+    fileSendBtn.disabled = !portOpen || !filePathEl.value;
+    fileStat.classList.add('hidden');
   });
 
   sendText.addEventListener('paste', (e) => {

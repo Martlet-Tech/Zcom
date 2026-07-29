@@ -84,7 +84,10 @@
 
     <div id="file-ops" class="bottom-row" data-view-group="file">
       <button id="btn-file-open" class="small-btn"><i data-lucide="folder-open"></i> 打开文件</button>
-      <span id="file-path" class="file-path-label">未选择文件</span>
+      <div class="file-path-wrap">
+        <input id="file-path" class="file-path-input" placeholder="未选择文件" />
+        <span id="file-stat" class="file-stat hidden"></span>
+      </div>
       <button id="btn-file-send" class="small-btn" disabled><i data-lucide="upload"></i> 发送文件</button>
       <button id="btn-file-save" class="small-btn"><i data-lucide="save"></i> 保存接收</button>
     </div>
@@ -188,6 +191,14 @@
             <button class="segmented-btn" data-value="lf">LF</button>
             <button class="segmented-btn active" data-value="crlf">CR+LF</button>
           </div>
+        </div>
+        <div class="setting-row">
+          <label>发送分包间隔:</label>
+          <input type="number" id="setting-chunk-interval" value="10" min="-1" max="10000" class="small-input" style="width:60px" />
+          <span class="label" style="margin:0 4px">ms</span>
+          <span class="label" style="margin:0 4px">每</span>
+          <input type="number" id="setting-chunk-size" value="1024" min="1" max="65536" class="small-input" style="width:70px" />
+          <span class="label" style="margin:0 4px">字节</span>
         </div>
         <div class="setting-row">
           <label>接收换行策略:</label>
