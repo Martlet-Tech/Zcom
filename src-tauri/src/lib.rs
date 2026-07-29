@@ -19,6 +19,14 @@ fn open_devtools(webview: tauri::Webview) {
     webview.open_devtools();
 }
 
+#[tauri::command]
+fn set_window_title(app: tauri::AppHandle, title: String) -> Result<(), String> {
+    app.get_webview_window("main")
+        .ok_or("Window not found".to_string())?
+        .set_title(&title)
+        .map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     env_logger::init();
@@ -52,6 +60,7 @@ pub fn run() {
             receive_buffer::mcp_push_lines,
             receive_buffer::mcp_clear_buffer,
             open_devtools,
+            set_window_title,
         ])
         .setup(|app| {
             let show_item = MenuItemBuilder::with_id("show", "显示主窗口")

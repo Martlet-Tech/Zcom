@@ -86,5 +86,18 @@ export function initTitlebar() {
   document.addEventListener('mcp-status-changed', updateMcpUI);
   updateMcpUI();
 
+  document.addEventListener('port-state-change', async (e) => {
+    const titleEl = document.querySelector('.titlebar-title');
+    if (e.detail.open) {
+      const { currentPort } = await getSettings();
+      const portName = currentPort || '串口';
+      invoke('set_window_title', { title: portName });
+      if (titleEl) titleEl.textContent = portName;
+    } else {
+      invoke('set_window_title', { title: 'Zcom调试助手' });
+      if (titleEl) titleEl.textContent = 'Zcom调试助手';
+    }
+  });
+
   return { getPinned: () => pinned };
 }
