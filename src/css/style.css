@@ -200,6 +200,29 @@ select:focus, input:focus, textarea:focus {
   font-size: 13px;
 }
 .menu-btn:hover { background: var(--bg2); }
+.mode-switch {
+  display: flex;
+  margin-right: 8px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.mode-btn {
+  padding: 3px 10px;
+  font-size: 11px;
+  background: var(--bg);
+  border: none;
+  color: var(--fg-dim);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.mode-btn:hover {
+  background: var(--bg3);
+}
+.mode-btn.active {
+  background: var(--accent2);
+  color: var(--fg);
+}
 .menu-right {
   display: flex;
   align-items: center;

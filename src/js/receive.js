@@ -1,6 +1,10 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { timestamp, bytesToHex, getSettings } from './utils.js';
+import { termWrite } from './terminal.js';
+
+export let isTerminalMode = false;
+export function setTerminalMode(v) { isTerminalMode = v; }
 
 let autoScroll = true;
 let hexDisplay = false;
@@ -409,6 +413,17 @@ function appendStreamText(text) {
 
 export async function appendData(bytes, direction) {
   lastDirection = direction;
+
+  if (isTerminalMode) {
+    let text;
+    try {
+      text = await invoke('decode_bytes', { bytes, encoding });
+    } catch {
+      text = new TextDecoder('utf-8', { fatal: false }).decode(new Uint8Array(bytes));
+    }
+    termWrite(text);
+    return;
+  }
 
   if (hexDisplay) {
     appendChunkLine(bytesToHex(bytes));

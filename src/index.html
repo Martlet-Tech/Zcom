@@ -26,6 +26,10 @@
 
   <div id="menu-bar">
     <div class="menu-left">
+      <div class="mode-switch">
+        <button class="mode-btn active" data-mode="standard">调试</button>
+        <button class="mode-btn" data-mode="terminal">终端</button>
+      </div>
       <button id="btn-settings" class="menu-btn">设置</button>
       <div id="view-menu-wrap" class="view-menu">
         <button id="btn-view" class="menu-btn">视图</button>
@@ -66,6 +70,7 @@
     <div id="receive-area">
       <div id="receive-content"></div>
     </div>
+    <div id="terminal-container" class="receive-area hidden"></div>
 
     <div id="send-drag-handle"></div>
     <div id="send-area" class="bottom-row">
