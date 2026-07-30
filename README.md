@@ -38,6 +38,7 @@ Issues and PRs welcome.
 
 ## Features
 
+- 🔥 **Terminal mode** — switch to xterm.js full terminal emulator, ANSI color rendering, keyboard input direct to serial port, ideal for Linux shell / RT-Thread / busybox dialogue
 - 🔥 **MCP (Model Context Protocol) Server** — built-in MCP HTTP server lets AI agents (opencode, Claude Desktop, etc.) read serial data, inspect port status, and send commands in real time. Enable in settings, connect at `http://localhost:9876/mcp`.
 - 🔥 **Repeat line folding** — auto-fold identical consecutive lines into <code>[×N]</code>, click to expand, right-click for copy / fold below
 - 🔥 **Pin window** — main window and multi-string window both support always-on-top
@@ -73,6 +74,12 @@ Issues and PRs welcome.
   <img src="screenshots/fold.png" width="700" alt="Repeat line folding">
   <br>
   <em>Repeat line folding — auto-fold identical consecutive lines into <code>[×N]</code>, click to expand, right-click for copy / fold below</em>
+</p>
+
+<p align="center">
+  <img src="screenshots/terminal-mode.png" width="700" alt="Terminal mode">
+  <br>
+  <em>Terminal mode — xterm.js full terminal emulation, direct keyboard I/O</em>
 </p>
 
 ## Quick Start

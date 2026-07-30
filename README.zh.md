@@ -39,6 +39,7 @@
 
 ## 特性
 
+- 🔥 **终端模式** — 切换到 xterm.js 全功能终端模拟器，ANSI 颜色渲染，键盘输入直通串口，适合 Linux shell / RT-Thread / busybox 对话式调试
 - 🔥 **MCP（Model Context Protocol）服务** — 内置 MCP HTTP 服务器，AI agent（opencode、Claude Desktop 等）可实时读取串口数据、查询端口状态、发送指令。设置中启用即开，连接地址 `http://localhost:9876/mcp`。
 - 🔥 **重复行折叠** — 自动折叠连续重复行显示为 <code>[×N]</code>，点击展开，右键菜单支持复制和折叠以下重复项
 - 🔥 **置顶窗口** — 主窗口和多字符串窗口均支持置顶
@@ -74,6 +75,12 @@
   <img src="screenshots/fold.png" width="700" alt="重复行折叠">
   <br>
   <em>重复行折叠 — 自动折叠连续重复行显示为 <code>[×N]</code>，点击展开，右键菜单支持复制和折叠以下重复项</em>
+</p>
+
+<p align="center">
+  <img src="screenshots/terminal-mode.png" width="700" alt="终端模式">
+  <br>
+  <em>终端模式 — xterm.js 全功能终端模拟，键盘直通串口 I/O</em>
 </p>
 
 ## 快速开始
