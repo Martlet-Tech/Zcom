@@ -422,6 +422,7 @@ export async function appendData(bytes, direction) {
       text = new TextDecoder('utf-8', { fatal: false }).decode(new Uint8Array(bytes));
     }
     termWrite(text);
+    mcpBuffer.push(text);
     return;
   }
 
