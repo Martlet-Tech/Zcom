@@ -70,7 +70,7 @@
     <div id="receive-area">
       <div id="receive-content"></div>
     </div>
-    <div id="terminal-container" class="receive-area hidden"></div>
+    <div id="terminal-container" class="hidden"></div>
 
     <div id="send-drag-handle"></div>
     <div id="send-area" class="bottom-row">
@@ -119,10 +119,12 @@
 
   <div id="status-bar">
     <div class="status-group">
-      <label class="chk-label"><input type="checkbox" id="chk-hex-send" /> Hex发送</label>
-      <label class="chk-label"><input type="checkbox" id="chk-hex-display" /> Hex显示</label>
-      <label class="chk-label"><input type="checkbox" id="chk-timestamp" checked /> 时间戳</label>
-      <label class="chk-label"><input type="checkbox" id="chk-fold-repeat" /> 折叠</label>
+      <span id="status-hide-terminal">
+        <label class="chk-label"><input type="checkbox" id="chk-hex-send" /> Hex发送</label>
+        <label class="chk-label"><input type="checkbox" id="chk-hex-display" /> Hex显示</label>
+        <label class="chk-label"><input type="checkbox" id="chk-timestamp" checked /> 时间戳</label>
+        <label class="chk-label"><input type="checkbox" id="chk-fold-repeat" /> 折叠</label>
+      </span>
       <select id="encoding-select" class="small-select" title="编码">
         <option value="utf-8">UTF-8</option>
         <option value="gbk">GBK</option>

@@ -380,6 +380,13 @@ select:focus, input:focus, textarea:focus {
   color: var(--receive-color);
   line-height: 20px; /* must be integer device px at 125%/150%/175% DPI (multiple of 4) */
 }
+#terminal-container {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+  background: var(--receive-bg);
+}
 #zoom-bar {
   position: absolute;
   top: 6px;
@@ -1006,6 +1013,10 @@ select:focus, input:focus, textarea:focus {
 }
 .view-hidden {
   display: none !important;
+}
+.view-item.disabled {
+  opacity: 0.4;
+  pointer-events: none;
 }
 
 /* ===== Utility ===== */

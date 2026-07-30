@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { timestamp, bytesToHex, getSettings } from './utils.js';
-import { termWrite } from './terminal.js';
+import { termWrite, clearTerminal } from './terminal.js';
 
 export let isTerminalMode = false;
 export function setTerminalMode(v) { isTerminalMode = v; }
@@ -613,7 +613,11 @@ function clearReceiveLines() {
 
 export async function clearReceive() {
   await flushMcp();
-  clearReceiveLines();
+  if (isTerminalMode) {
+    clearTerminal();
+  } else {
+    clearReceiveLines();
+  }
   invoke('mcp_clear_buffer').catch(() => {});
   invoke('reset_io_counters').catch(() => {});
 }

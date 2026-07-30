@@ -3,7 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { initTitlebar } from './titlebar.js';
 import { initMenu, initHelpMenu } from './menu.js';
-import { initReceive, clearReceive, setHexDisplay, setShowTimestamp, applyReceiveStyle, setTerminalMode } from './receive.js';
+import { initReceive, clearReceive, setHexDisplay, setShowTimestamp, applyReceiveStyle, isTerminalMode, setTerminalMode } from './receive.js';
 import { createTerminal, destroyTerminal, termFit } from './terminal.js';
 import { initBottom } from './bottom.js';
 import { initStatusBar } from './statusbar.js';
@@ -27,6 +27,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   await initViewMenu();
   await initSettings();
 
+  function applyTerminalUI(isTerminal) {
+    const ids = ['send-drag-handle', 'send-area', 'file-ops', 'checksum-area', 'filter-bar', 'receive-area'];
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = isTerminal ? 'none' : '';
+    });
+
+    const statusEl = document.getElementById('status-hide-terminal');
+    if (statusEl) statusEl.style.display = isTerminal ? 'none' : '';
+
+    document.querySelectorAll('.view-item').forEach(item => {
+      item.classList.toggle('disabled', isTerminal);
+    });
+
+    document.querySelectorAll('.mode-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.mode === (isTerminal ? 'terminal' : 'standard')));
+  }
+
   // Mode switch handler
   document.querySelectorAll('.mode-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
@@ -34,13 +52,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const isTerminal = newMode === 'terminal';
 
       setTerminalMode(isTerminal);
-
-      document.getElementById('send-drag-handle').style.display = isTerminal ? 'none' : '';
-      document.getElementById('send-area').style.display = isTerminal ? 'none' : '';
-      document.getElementById('file-ops').style.display = isTerminal ? 'none' : '';
-      document.getElementById('checksum-area').style.display = isTerminal ? 'none' : '';
-      document.getElementById('filter-bar').style.display = isTerminal ? 'none' : '';
-      document.getElementById('receive-area').style.display = isTerminal ? 'none' : '';
+      applyTerminalUI(isTerminal);
 
       if (isTerminal) {
         const s = await getSettings();
@@ -49,7 +61,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         destroyTerminal();
       }
 
-      document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === newMode));
       await patchSettings({ mode: newMode });
     });
   });
@@ -58,13 +69,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (mode === 'terminal') {
     createTerminal(settings);
     setTerminalMode(true);
-    document.getElementById('send-drag-handle').style.display = 'none';
-    document.getElementById('send-area').style.display = 'none';
-    document.getElementById('file-ops').style.display = 'none';
-    document.getElementById('checksum-area').style.display = 'none';
-    document.getElementById('filter-bar').style.display = 'none';
-    document.getElementById('receive-area').style.display = 'none';
-    document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === 'terminal'));
+    applyTerminalUI(true);
   }
 
   document.addEventListener('clear-receive', clearReceive);
@@ -85,7 +90,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Resize terminal when window resizes
   window.addEventListener('resize', () => {
-    if (settings.mode === 'terminal') termFit();
+    if (isTerminalMode) termFit();
   });
 
   const multiBtn = document.getElementById('btn-multi');

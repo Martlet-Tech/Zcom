@@ -1,6 +1,7 @@
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { invoke } from '@tauri-apps/api/core';
+import '@xterm/xterm/css/xterm.css';
 
 let term = null;
 let fitAddon = null;
@@ -51,6 +52,10 @@ export function termWrite(text) {
 
 export function termFit() {
   if (fitAddon) fitAddon.fit();
+}
+
+export function clearTerminal() {
+  if (term) term.clear();
 }
 
 export function updateTerminalTheme(settings) {
