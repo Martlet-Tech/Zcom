@@ -98,7 +98,7 @@ function renderItem(item) {
     <span class="drag-handle"></span>
     <button class="item-del-btn"></button>
     <div class="item-text-wrap" data-item-id="${item.id}">
-      <span class="item-text-data">${escapeHtml(item.text || ' ')}</span>
+      <span class="item-text-data${item.text ? '' : ' placeholder'}">${escapeHtml(item.text || '点击输入')}</span>
       <span class="item-text-name${item.name ? '' : ' placeholder'}">${escapeHtml(item.name || '点击命名')}</span>
       <input type="text" class="item-text-input" placeholder="输入发送内容" />
       <input type="text" class="item-text-name-input" placeholder="输入备注名称..." />
@@ -172,7 +172,8 @@ function renderItem(item) {
 
 function saveDataEdit(item, dataSpan, dataInput, wrap) {
   item.text = dataInput.value;
-  dataSpan.textContent = item.text || ' ';
+  dataSpan.textContent = item.text || '点击输入';
+  dataSpan.classList.toggle('placeholder', !item.text);
   wrap.classList.remove('edit-data');
   saveItems();
 }

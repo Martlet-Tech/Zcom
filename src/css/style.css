@@ -236,7 +236,7 @@ select:focus, input:focus, textarea:focus {
 }
 .custom-select {
   position: relative;
-  width: 220px;
+  width: 200px;
   font-size: 13px;
   user-select: none;
   outline: none;
@@ -884,7 +884,7 @@ select:focus, input:focus, textarea:focus {
   flex-shrink: 0;
   white-space: nowrap;
   opacity: 0.75;
-  cursor: pointer;
+  cursor: text;
   margin-left: auto;
   padding-left: 8px;
   user-select: none;
@@ -893,6 +893,10 @@ select:focus, input:focus, textarea:focus {
 }
 .item-text-name.placeholder {
   font-style: italic;
+}
+.item-text-data.placeholder {
+  font-style: italic;
+  opacity: 0.5;
 }
 .item-text-input,
 .item-text-name-input {
