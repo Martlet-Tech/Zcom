@@ -45,6 +45,16 @@
     "about": "关于",
     "aboutText": "ZCOM 串口调试助手 v{ver}\n基于 Tauri + Rust"
   },
+  "conn": {
+    "serial": "串口",
+    "tcpClient": "TCP Client",
+    "tcpServer": "TCP Server",
+    "udpClient": "UDP Client",
+    "udpServer": "UDP Server",
+    "remoteIp": "对方IP",
+    "remotePort": "对方端口",
+    "localPort": "本地端口"
+  },
   "receive": {
     "clear": "清空",
     "sendPlaceholder": "输入要发送的数据...",
@@ -77,6 +87,7 @@
     "timestamp": "时间戳",
     "echo": "回显",
     "fold": "折叠",
+    "netConnected": "{remote} 已连接",
     "encoding": "编码",
     "connectedInfo": "{name} 已连接 {baud} {dataBits}N{stopBits}",
     "reconnectingInfo": "{name} 重连中 {baud}"

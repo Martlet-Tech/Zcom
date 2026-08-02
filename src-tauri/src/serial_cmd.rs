@@ -1,7 +1,8 @@
 use crate::checksum;
 use crate::checksum::ChecksumAlgo;
 use crate::encoding_utils;
-use crate::state::{ConnState, SerialState};
+use crate::net_cmd;
+use crate::state::{ConnState, SerialState, MODE_SERIAL};
 use serial2::{CharSize, FlowControl, Parity, StopBits};
 use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
@@ -135,6 +136,9 @@ async fn open_port_inner(
 ) -> Result<(), String> {
     if state.connected.load(Ordering::SeqCst) {
         return Err("Port already open".into());
+    }
+    if state.net.connected.load(Ordering::SeqCst) {
+        return Err("Network connection is open, close it first".into());
     }
 
     let port = open_port_sync(path, baud, char_size, stop_bits, parity, flow_control)?;
@@ -445,16 +449,24 @@ pub async fn send_data_internal(
         encoding_utils::encode_text(&data, enc)
     };
 
+    route_bytes(state, &bytes).await?;
+
+    Ok(bytes.iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(" "))
+}
+
+async fn route_bytes(state: &SerialState, bytes: &[u8]) -> Result<(), String> {
+    if state.net.mode.load(Ordering::SeqCst) != MODE_SERIAL {
+        return net_cmd::net_send_bytes(&state.net, bytes).await;
+    }
     if !state.connected.load(Ordering::SeqCst) {
         return Err("Port not open".into());
     }
     let mut port = state.port.lock().unwrap_or_else(|e| e.into_inner());
     let port = port.as_mut().ok_or("Port not open")?;
-    port.write_all(&bytes).map_err(|e| format!("Write error: {}", e))?;
+    port.write_all(bytes).map_err(|e| format!("Write error: {}", e))?;
     port.flush().map_err(|e| format!("Flush error: {}", e))?;
     state.tx_bytes.fetch_add(bytes.len() as u64, Ordering::SeqCst);
-
-    Ok(bytes.iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(" "))
+    Ok(())
 }
 
 #[tauri::command]
@@ -477,6 +489,7 @@ pub async fn send_data_raw(
     checksum_pos: Option<i32>,
     checksum_lsb: Option<bool>,
 ) -> Result<(), String> {
+    let state = state.inner();
     let bytes = if hex_mode {
         encoding_utils::parse_hex_string(&data).map_err(|e| format!("Hex parse error: {}", e))?
     } else {
@@ -493,14 +506,7 @@ pub async fn send_data_raw(
         bytes
     };
 
-    if !state.connected.load(Ordering::SeqCst) {
-        return Err("Port not open".into());
-    }
-    let mut port = state.port.lock().unwrap_or_else(|e| e.into_inner());
-    let port = port.as_mut().ok_or("Port not open")?;
-    port.write_all(&bytes).map_err(|e| format!("Write error: {}", e))?;
-    state.tx_bytes.fetch_add(bytes.len() as u64, Ordering::SeqCst);
-    Ok(())
+    route_bytes(state, &bytes).await
 }
 
 #[tauri::command]
@@ -508,15 +514,8 @@ pub async fn send_raw_bytes(
     state: tauri::State<'_, SerialState>,
     bytes: Vec<u8>,
 ) -> Result<(), String> {
-    if !state.connected.load(Ordering::SeqCst) {
-        return Err("Port not open".into());
-    }
-    let mut port = state.port.lock().unwrap_or_else(|e| e.into_inner());
-    let port = port.as_mut().ok_or("Port not open")?;
-    port.write_all(&bytes).map_err(|e| format!("Write error: {}", e))?;
-    port.flush().map_err(|e| format!("Flush error: {}", e))?;
-    state.tx_bytes.fetch_add(bytes.len() as u64, Ordering::SeqCst);
-    Ok(())
+    let state = state.inner();
+    route_bytes(&state, &bytes).await
 }
 
 #[tauri::command]
@@ -525,6 +524,8 @@ pub async fn reset_io_counters(
 ) -> Result<(), String> {
     state.tx_bytes.store(0, Ordering::SeqCst);
     state.rx_bytes.store(0, Ordering::SeqCst);
+    state.net.tx_bytes.store(0, Ordering::SeqCst);
+    state.net.rx_bytes.store(0, Ordering::SeqCst);
     Ok(())
 }
 
@@ -536,6 +537,8 @@ pub async fn set_reconnect_config(
 ) -> Result<(), String> {
     state.auto_reconnect.store(auto, Ordering::SeqCst);
     state.reconnect_interval_ms.store(interval_ms.max(100), Ordering::SeqCst);
+    state.net.auto_reconnect.store(auto, Ordering::SeqCst);
+    state.net.reconnect_interval_ms.store(interval_ms.max(100), Ordering::SeqCst);
     Ok(())
 }
 

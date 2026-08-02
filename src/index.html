@@ -46,20 +46,34 @@
       </div>
     </div>
     <div class="menu-right">
-      <div id="com-select" class="custom-select" tabindex="0">
+      <div id="conn-type-select" class="custom-select conn-select" tabindex="0">
         <div class="cs-trigger">
-          <span class="cs-text" id="com-select-text">— 选择串口 —</span>
+          <span class="cs-text" id="conn-type-text" data-i18n="conn.serial">串口</span>
           <i data-lucide="chevron-down" class="cs-arrow-icon"></i>
         </div>
-        <div class="cs-dropdown" id="com-select-dropdown"></div>
+        <div class="cs-dropdown" id="conn-type-dropdown"></div>
       </div>
-      <button id="btn-serial-settings" class="small-btn" title="串口详细设置" data-i18n-title="serialSettings.title"><i data-lucide="settings"></i></button>
-      <div id="baud-select" class="custom-select baud-select" tabindex="0">
-        <div class="cs-trigger">
-          <span class="cs-text" id="baud-select-text">115200</span>
-          <i data-lucide="chevron-down" class="cs-arrow-icon"></i>
+      <div id="serial-group">
+        <div id="com-select" class="custom-select" tabindex="0">
+          <div class="cs-trigger">
+            <span class="cs-text" id="com-select-text">— 选择串口 —</span>
+            <i data-lucide="chevron-down" class="cs-arrow-icon"></i>
+          </div>
+          <div class="cs-dropdown" id="com-select-dropdown"></div>
         </div>
-        <div class="cs-dropdown" id="baud-select-dropdown"></div>
+        <button id="btn-serial-settings" class="small-btn" title="串口详细设置" data-i18n-title="serialSettings.title"><i data-lucide="settings"></i></button>
+        <div id="baud-select" class="custom-select baud-select" tabindex="0">
+          <div class="cs-trigger">
+            <span class="cs-text" id="baud-select-text">115200</span>
+            <i data-lucide="chevron-down" class="cs-arrow-icon"></i>
+          </div>
+          <div class="cs-dropdown" id="baud-select-dropdown"></div>
+        </div>
+      </div>
+      <div id="net-group" class="hidden">
+        <input type="text" id="net-remote-ip" class="net-input" spellcheck="false" placeholder="对方IP" data-i18n-placeholder="conn.remoteIp" />
+        <input type="number" id="net-remote-port" class="net-input net-port" min="1" max="65535" placeholder="对方端口" data-i18n-placeholder="conn.remotePort" />
+        <input type="number" id="net-local-port" class="net-input net-port" min="1" max="65535" placeholder="本地端口" data-i18n-placeholder="conn.localPort" />
       </div>
       <button id="btn-refresh-ports" class="small-btn" title="刷新串口" data-i18n-title="menu.refreshPorts"><i data-lucide="refresh-cw"></i></button>
       <button id="btn-toggle-port" class="small-btn" disabled data-i18n="common.open">打开</button>

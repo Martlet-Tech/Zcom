@@ -45,6 +45,16 @@
     "about": "About",
     "aboutText": "ZCOM Serial Debug Assistant v{ver}\nBuilt with Tauri + Rust"
   },
+  "conn": {
+    "serial": "Serial",
+    "tcpClient": "TCP Client",
+    "tcpServer": "TCP Server",
+    "udpClient": "UDP Client",
+    "udpServer": "UDP Server",
+    "remoteIp": "Remote IP",
+    "remotePort": "Remote port",
+    "localPort": "Local port"
+  },
   "receive": {
     "clear": "Clear",
     "sendPlaceholder": "Enter data to send...",
@@ -77,6 +87,7 @@
     "timestamp": "Timestamp",
     "echo": "Echo",
     "fold": "Fold",
+    "netConnected": "{remote} connected",
     "encoding": "Encoding",
     "connectedInfo": "{name} connected {baud} {dataBits}N{stopBits}",
     "reconnectingInfo": "{name} reconnecting {baud}"

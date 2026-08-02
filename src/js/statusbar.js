@@ -126,7 +126,11 @@ export async function initStatusBar() {
       const info = await invoke('get_port_info');
       displayTx(info.tx);
       displayRx(info.rx);
-      portInfo.innerHTML = t('statusbar.connectedInfo', { name: info.name, baud: info.baud, dataBits: info.dataBits, stopBits: info.stopBits });
+      if (info.mode && info.mode !== 0) {
+        portInfo.innerHTML = t('statusbar.netConnected', { remote: info.name || info.local || '' });
+      } else {
+        portInfo.innerHTML = t('statusbar.connectedInfo', { name: info.name, baud: info.baud, dataBits: info.dataBits, stopBits: info.stopBits });
+      }
     } catch {
       // ignore
     }

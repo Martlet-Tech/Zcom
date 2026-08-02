@@ -13,6 +13,19 @@ let stopBits = 1;
 let parity = 'none';
 let flowControl = 'none';
 
+const MODE_MAP = { serial: 0, 'tcp-client': 1, 'tcp-server': 2, 'udp-client': 3, 'udp-server': 4 };
+const CONN_TYPES = [
+  { v: 'serial', key: 'conn.serial' },
+  { v: 'tcp-client', key: 'conn.tcpClient' },
+  { v: 'tcp-server', key: 'conn.tcpServer' },
+  { v: 'udp-client', key: 'conn.udpClient' },
+  { v: 'udp-server', key: 'conn.udpServer' },
+];
+let connType = 'serial';
+let netRemoteHost = '';
+let netRemotePort = '';
+let netLocalPort = '';
+
 export function initMenu() {
   const comEl = document.getElementById('com-select');
   const comText = document.getElementById('com-select-text');
@@ -22,6 +35,14 @@ export function initMenu() {
   const toggleBtn = document.getElementById('btn-toggle-port');
   const statusEl = document.getElementById('port-status');
   const settingsBtn = document.getElementById('btn-settings');
+  const connTypeEl = document.getElementById('conn-type-select');
+  const connTypeText = document.getElementById('conn-type-text');
+  const connTypeDropdown = document.getElementById('conn-type-dropdown');
+  const serialGroup = document.getElementById('serial-group');
+  const netGroup = document.getElementById('net-group');
+  const netIpEl = document.getElementById('net-remote-ip');
+  const netRemotePortEl = document.getElementById('net-remote-port');
+  const netLocalPortEl = document.getElementById('net-local-port');
 
   let statusTitleKey = 'common.disconnected';
   let statusClass = 'port-status';
@@ -54,7 +75,7 @@ export function initMenu() {
     if (s === PortState.CONNECTING || s === PortState.CLOSING) {
       toggleBtn.disabled = true;
     } else if (s === PortState.DISCONNECTED) {
-      toggleBtn.disabled = !currentPort;
+      toggleBtn.disabled = !canOpen();
     } else {
       toggleBtn.disabled = false;
     }
@@ -146,6 +167,7 @@ export function initMenu() {
   }
 
   async function refresh() {
+    if (connType !== 'serial') return;
     try {
       const ports = await invoke('list_ports');
       const saved = await getSettings();
@@ -200,6 +222,101 @@ export function initMenu() {
 
   refresh();
 
+  function canOpen() {
+    if (connType === 'serial') return !!currentPort;
+    if (connType === 'tcp-client' || connType === 'udp-client') {
+      return netRemoteHost.trim() !== '' && parseInt(netRemotePort) > 0;
+    }
+    return parseInt(netLocalPort) > 0;
+  }
+
+  function applyConnUI() {
+    const isSerial = connType === 'serial';
+    serialGroup.classList.toggle('hidden', !isSerial);
+    netGroup.classList.toggle('hidden', isSerial);
+    refreshBtn.style.display = isSerial ? '' : 'none';
+    const isClient = connType === 'tcp-client' || connType === 'udp-client';
+    netIpEl.style.display = isClient ? '' : 'none';
+    netRemotePortEl.style.display = isClient ? '' : 'none';
+    netLocalPortEl.style.display = isSerial || isClient ? 'none' : '';
+    applyPortUI();
+  }
+
+  function closeConnTypeDropdown() {
+    connTypeEl.classList.remove('open');
+  }
+
+  function toggleConnTypeDropdown() {
+    connTypeEl.classList.toggle('open');
+  }
+
+  async function selectConnType(el) {
+    if (!el) return;
+    connTypeDropdown.querySelectorAll('.cs-option.selected').forEach(e => e.classList.remove('selected'));
+    el.classList.add('selected');
+    const val = el.dataset.value || 'serial';
+    closeConnTypeDropdown();
+    if (val === connType) return;
+    if (portFSM.state === PortState.CONNECTED || portFSM.state === PortState.RECONNECTING) {
+      transition(PortEvent.CLOSE_START);
+      try {
+        if (connType === 'serial') {
+          await invoke('close_port');
+        } else {
+          await invoke('net_close');
+        }
+      } catch (e) {
+        console.error('close error:', e);
+      }
+      transition(PortEvent.CLOSED);
+    }
+    connType = val;
+    connTypeText.textContent = el.textContent || t('conn.serial');
+    await patchSettings({ connType: val });
+    await invoke('set_conn_mode', { mode: MODE_MAP[val] }).catch(() => {});
+    applyConnUI();
+  }
+
+  CONN_TYPES.forEach(ct => {
+    const opt = document.createElement('div');
+    opt.className = 'cs-option';
+    opt.dataset.value = ct.v;
+    opt.textContent = t(ct.key);
+    opt.addEventListener('click', () => selectConnType(opt));
+    connTypeDropdown.appendChild(opt);
+    document.addEventListener('i18n-changed', () => {
+      opt.textContent = t(ct.key);
+      if (connType === ct.v) connTypeText.textContent = t(ct.key);
+    });
+  });
+
+  connTypeEl.addEventListener('click', (e) => {
+    if (e.target.closest('.cs-dropdown')) return;
+    toggleConnTypeDropdown();
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!connTypeEl.contains(e.target)) {
+      closeConnTypeDropdown();
+    }
+  });
+
+  [netIpEl, netRemotePortEl, netLocalPortEl].forEach(el => {
+    el.addEventListener('input', () => {
+      netRemoteHost = netIpEl.value;
+      netRemotePort = netRemotePortEl.value;
+      netLocalPort = netLocalPortEl.value;
+      if (portFSM.state === PortState.DISCONNECTED) applyPortUI();
+    });
+    el.addEventListener('change', () => {
+      patchSettings({
+        netRemoteHost: netIpEl.value,
+        netRemotePort: netRemotePortEl.value,
+        netLocalPort: netLocalPortEl.value,
+      });
+    });
+  });
+
   function updateBaudSelection(rate) {
     baudText.textContent = String(rate);
     baudDropdown.querySelectorAll('.cs-option').forEach(o => {
@@ -215,6 +332,18 @@ export function initMenu() {
     stopBits = saved.stopBits || 1;
     parity = saved.parity || 'none';
     flowControl = saved.flowControl || 'none';
+    connType = saved.connType || 'serial';
+    netRemoteHost = saved.netRemoteHost || '';
+    netRemotePort = saved.netRemotePort || '';
+    netLocalPort = saved.netLocalPort || '';
+    netIpEl.value = netRemoteHost;
+    netRemotePortEl.value = netRemotePort;
+    netLocalPortEl.value = netLocalPort;
+    const active = connTypeDropdown.querySelector(`.cs-option[data-value="${connType}"]`);
+    if (active) active.classList.add('selected');
+    connTypeText.textContent = t(CONN_TYPES.find(c => c.v === connType)?.key || 'conn.serial');
+    await invoke('set_conn_mode', { mode: MODE_MAP[connType] }).catch(() => {});
+    applyConnUI();
   })();
 
   comEl.addEventListener('click', (e) => {
@@ -346,28 +475,41 @@ export function initMenu() {
     if (s === PortState.CONNECTED || s === PortState.RECONNECTING) {
       transition(PortEvent.CLOSE_START);
       try {
-        await invoke('close_port');
+        if (connType === 'serial') {
+          await invoke('close_port');
+        } else {
+          await invoke('net_close');
+        }
       } catch (e) {
-        console.error('close_port error:', e);
+        console.error('close error:', e);
       }
       transition(PortEvent.CLOSED);
       return;
     }
     if (s === PortState.DISCONNECTED) {
-      if (!currentPort) return;
-      transition(PortEvent.OPEN_START, { portName: currentPort });
+      if (!canOpen()) return;
+      transition(PortEvent.OPEN_START, { portName: connType });
       try {
-        await invoke('open_port', {
-          path: currentPort,
-          baud: baudRate,
-          charSize: charSize,
-          stopBits: stopBits,
-          parity: parity,
-          flowControl: flowControl,
-        });
+        if (connType === 'serial') {
+          await invoke('open_port', {
+            path: currentPort,
+            baud: baudRate,
+            charSize: charSize,
+            stopBits: stopBits,
+            parity: parity,
+            flowControl: flowControl,
+          });
+        } else {
+          await invoke('net_open', {
+            mode: MODE_MAP[connType],
+            remoteHost: netRemoteHost.trim() || null,
+            remotePort: parseInt(netRemotePort) > 0 ? parseInt(netRemotePort) : null,
+            localPort: parseInt(netLocalPort) > 0 ? parseInt(netLocalPort) : null,
+          });
+        }
         transition(PortEvent.OPEN_OK);
       } catch (e) {
-        console.error('open_port error:', e);
+        console.error('open error:', e);
         transition(PortEvent.OPEN_FAIL);
         statusEl.className = 'port-status error';
         statusEl.title = t('common.connectionFailed');
@@ -447,7 +589,7 @@ export function initMenu() {
 
   document.addEventListener('port-closed', () => {
     transition(PortEvent.CLOSED);
-    if (!comEl.classList.contains('open')) refresh();
+    if (connType === 'serial' && !comEl.classList.contains('open')) refresh();
   });
 }
 

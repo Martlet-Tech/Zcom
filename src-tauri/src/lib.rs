@@ -6,8 +6,9 @@ mod mcp_server;
 mod window_helper;
 mod encoding_utils;
 mod multi_string;
+mod net_cmd;
 
-use state::SerialState;
+use state::{NetState, SerialState};
 use receive_buffer::ReceiveBuffer;
 use mcp_server::McpServerHandle;
 use tauri::Manager;
@@ -69,12 +70,16 @@ fn set_tray_menu_language(app: tauri::AppHandle, lang: String) -> Result<(), Str
 pub fn run() {
     env_logger::init();
 
+    let net = NetState::new();
+    let serial = SerialState::new_with_net(net.clone());
+
     tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_window_state::Builder::default().build())
-        .manage(SerialState::new())
+        .manage(serial)
+        .manage(net)
         .manage(ReceiveBuffer::new())
         .manage(McpServerHandle::new())
         .manage(state::LocaleState::default())
@@ -91,6 +96,9 @@ pub fn run() {
             serial_cmd::set_baud_rate,
             serial_cmd::switch_port,
             serial_cmd::set_reconnect_config,
+            net_cmd::net_open,
+            net_cmd::net_close,
+            net_cmd::set_conn_mode,
             multi_string::open_multi_string_window,
             multi_string::load_multi_strings,
             multi_string::save_multi_strings,
