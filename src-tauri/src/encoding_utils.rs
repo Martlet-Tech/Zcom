@@ -93,3 +93,34 @@ pub async fn decode_bytes(bytes: Vec<u8>, encoding: String) -> Result<String, St
         _ => Ok(String::from_utf8_lossy(&bytes).into_owned()),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn gbk_encode_known_bytes() {
+        assert_eq!(encode_text("中文", "gbk"), vec![0xD6, 0xD0, 0xCE, 0xC4]);
+        assert_eq!(encode_text("abc", "gbk"), b"abc".to_vec());
+    }
+
+    #[test]
+    fn gbk_decode_roundtrip() {
+        let bytes = encode_text("串口调试", "gbk");
+        let (decoded, _, _) = encoding_rs::GBK.decode(&bytes);
+        assert_eq!(decoded, "串口调试");
+    }
+
+    #[test]
+    fn parse_hex_strips_whitespace() {
+        assert_eq!(parse_hex_string("01 0A ff").unwrap(), vec![0x01, 0x0A, 0xFF]);
+        let empty: Vec<u8> = Vec::new();
+        assert_eq!(parse_hex_string("").unwrap(), empty);
+    }
+
+    #[test]
+    fn parse_hex_rejects_odd_length() {
+        assert!(parse_hex_string("0A1").is_err());
+        assert!(parse_hex_string("zz").is_err());
+    }
+}

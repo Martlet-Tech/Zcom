@@ -106,3 +106,61 @@ pub fn apply_checksum(data: &[u8], algo: ChecksumAlgo, position: i32, lsb: bool)
     out.extend_from_slice(&data[pos..]);
     out
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn crc16_modbus_check_vector() {
+        let r = calc_checksum(b"123456789", ChecksumAlgo::Crc16);
+        assert_eq!(r.hex, "4B37");
+    }
+
+    #[test]
+    fn crc32_check_vector() {
+        let r = calc_checksum(b"123456789", ChecksumAlgo::Crc32);
+        assert_eq!(r.hex, "CBF43926");
+    }
+
+    #[test]
+    fn add8_sums_with_wraparound() {
+        let r = calc_checksum(&[0x01, 0x02, 0x03], ChecksumAlgo::Add8);
+        assert_eq!(r.hex, "06");
+        let wrap = calc_checksum(&[0xFF, 0x01], ChecksumAlgo::Add8);
+        assert_eq!(wrap.hex, "00");
+    }
+
+    #[test]
+    fn xor8_xors_bytes() {
+        let r = calc_checksum(&[0x11, 0x22], ChecksumAlgo::Xor8);
+        assert_eq!(r.hex, "33");
+    }
+
+    #[test]
+    fn apply_inserts_before_first_byte() {
+        let out = apply_checksum(&[0x01, 0x02, 0x03], ChecksumAlgo::Add8, 0, false);
+        assert_eq!(out, vec![0x06, 0x01, 0x02, 0x03]);
+    }
+
+    #[test]
+    fn apply_inserts_after_last_byte_with_negative_pos() {
+        let out = apply_checksum(&[0x01, 0x02, 0x03], ChecksumAlgo::Add8, -1, false);
+        assert_eq!(out, vec![0x01, 0x02, 0x06, 0x03]);
+    }
+
+    #[test]
+    fn apply_lsb_reverses_two_byte_checksum() {
+        let out = apply_checksum(&[0x01, 0x02], ChecksumAlgo::Crc16, 0, true);
+        let c = calc_checksum(&[0x01, 0x02], ChecksumAlgo::Crc16);
+        let hi = u8::from_str_radix(&c.hex[0..2], 16).unwrap();
+        let lo = u8::from_str_radix(&c.hex[2..4], 16).unwrap();
+        assert_eq!(out, vec![lo, hi, 0x01, 0x02]);
+    }
+
+    #[test]
+    fn unknown_algo_parsing_fails() {
+        assert!("bogus".parse::<ChecksumAlgo>().is_err());
+        assert!("crc16".parse::<ChecksumAlgo>().is_ok());
+    }
+}

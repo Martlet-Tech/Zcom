@@ -10,12 +10,32 @@ impl Default for LocaleState {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum ConnState {
+    Closed,
+    Reading,
+    Reconnecting,
+}
+
+pub struct ConnCore {
+    pub state: std::sync::Mutex<ConnState>,
+    pub wake: std::sync::Condvar,
+}
+
+impl Default for ConnCore {
+    fn default() -> Self {
+        Self {
+            state: std::sync::Mutex::new(ConnState::Closed),
+            wake: std::sync::Condvar::new(),
+        }
+    }
+}
+
 pub struct SerialState {
     pub port: Arc<Mutex<Option<serial2::SerialPort>>>,
     pub port_name: Arc<Mutex<Option<String>>>,
     pub baud_rate: Arc<AtomicU32>,
     pub suppress_close_event: Arc<AtomicBool>,
-    pub read_handle: Arc<Mutex<Option<tokio::task::JoinHandle<()>>>>,
     pub stop_reading: Arc<AtomicBool>,
     pub tx_bytes: Arc<AtomicU64>,
     pub rx_bytes: Arc<AtomicU64>,
@@ -28,6 +48,7 @@ pub struct SerialState {
     pub auto_reconnect: Arc<AtomicBool>,
     pub reconnect_interval_ms: Arc<AtomicU32>,
     pub generation: Arc<AtomicU32>,
+    pub conn: Arc<ConnCore>,
 }
 
 impl Clone for SerialState {
@@ -45,7 +66,6 @@ impl SerialState {
             port_name: Arc::new(Mutex::new(None)),
             baud_rate: Arc::new(AtomicU32::new(115200)),
             suppress_close_event: Arc::new(AtomicBool::new(false)),
-            read_handle: Arc::new(Mutex::new(None)),
             stop_reading: Arc::new(AtomicBool::new(true)),
             tx_bytes: Arc::new(AtomicU64::new(0)),
             rx_bytes: Arc::new(AtomicU64::new(0)),
@@ -58,6 +78,7 @@ impl SerialState {
             auto_reconnect: Arc::new(AtomicBool::new(true)),
             reconnect_interval_ms: Arc::new(AtomicU32::new(1000)),
             generation: Arc::new(AtomicU32::new(0)),
+            conn: Arc::new(ConnCore::default()),
         }
     }
 
@@ -67,7 +88,6 @@ impl SerialState {
             port_name: self.port_name.clone(),
             baud_rate: self.baud_rate.clone(),
             suppress_close_event: self.suppress_close_event.clone(),
-            read_handle: self.read_handle.clone(),
             stop_reading: self.stop_reading.clone(),
             tx_bytes: self.tx_bytes.clone(),
             rx_bytes: self.rx_bytes.clone(),
@@ -80,6 +100,7 @@ impl SerialState {
             auto_reconnect: self.auto_reconnect.clone(),
             reconnect_interval_ms: self.reconnect_interval_ms.clone(),
             generation: self.generation.clone(),
+            conn: self.conn.clone(),
         }
     }
 

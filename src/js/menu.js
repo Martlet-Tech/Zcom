@@ -4,9 +4,9 @@ import { getSettings, patchSettings } from './utils.js';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { listen } from '@tauri-apps/api/event';
 import { t } from './i18n.js';
+import { PortState, PortEvent, portFSM } from './serial-state.js';
 
 let currentPort = null;
-let portOpen = false;
 let baudRate = 115200;
 let charSize = 8;
 let stopBits = 1;
@@ -25,33 +25,58 @@ export function initMenu() {
 
   let statusTitleKey = 'common.disconnected';
   let statusClass = 'port-status';
-  let reconnecting = false;
 
-  function applyPortUI() {
-    toggleBtn.textContent = (portOpen || reconnecting) ? t('common.close') : t('common.open');
-    statusEl.className = statusClass;
-    statusEl.title = t(statusTitleKey);
-    if (!currentPort) comText.textContent = t('menu.selectPort');
+  function transition(event, payload) {
+    try {
+      portFSM.transition(event, payload);
+    } catch (e) {
+      console.warn('port FSM:', e.message);
+    }
   }
 
+  function applyPortUI() {
+    const s = portFSM.state;
+    switch (s) {
+      case PortState.CONNECTED:
+        statusClass = 'port-status connected';
+        statusTitleKey = 'common.connected';
+        break;
+      case PortState.RECONNECTING:
+        statusClass = 'port-status reconnecting';
+        statusTitleKey = 'common.reconnecting';
+        break;
+      default:
+        statusClass = 'port-status';
+        statusTitleKey = 'common.disconnected';
+    }
+    toggleBtn.textContent = (s === PortState.CONNECTED || s === PortState.RECONNECTING)
+      ? t('common.close') : t('common.open');
+    if (s === PortState.CONNECTING || s === PortState.CLOSING) {
+      toggleBtn.disabled = true;
+    } else if (s === PortState.DISCONNECTED) {
+      toggleBtn.disabled = !currentPort;
+    } else {
+      toggleBtn.disabled = false;
+    }
+    statusEl.className = statusClass;
+    statusEl.title = t(statusTitleKey);
+    if (!currentPort && s !== PortState.RECONNECTING) comText.textContent = t('menu.selectPort');
+    document.dispatchEvent(new CustomEvent('port-state-change', {
+      detail: { open: portFSM.open },
+    }));
+  }
+
+  portFSM.on(applyPortUI);
   document.addEventListener('i18n-changed', applyPortUI);
 
-  listen('port-reconnecting', () => {
-    reconnecting = true;
-    statusClass = 'port-status reconnecting';
-    statusTitleKey = 'common.reconnecting';
-    applyPortUI();
+  listen('port-reconnecting', (e) => {
+    const p = e.payload || {};
+    transition(PortEvent.DEVICE_LOST, { portName: p.name || portFSM.portName, baud: p.baud || portFSM.baud });
     if (!comEl.classList.contains('open')) refresh();
   });
 
   listen('port-reconnected', () => {
-    reconnecting = false;
-    portOpen = true;
-    statusClass = 'port-status connected';
-    statusTitleKey = 'common.connected';
-    applyPortUI();
-    toggleBtn.disabled = false;
-    document.dispatchEvent(new CustomEvent('port-state-change', { detail: { open: true } }));
+    transition(PortEvent.RECONNECTED);
     if (!comEl.classList.contains('open')) refresh();
   });
 
@@ -73,65 +98,50 @@ export function initMenu() {
     comText.textContent = el.textContent || t('menu.selectPort');
     closeComDropdown();
 
-    if (val === prevPort && (portOpen || reconnecting)) {
-      await patchSettings({ currentPort: val });
-      return;
-    }
-
-    if (portOpen || reconnecting) {
+    const s = portFSM.state;
+    if (s === PortState.CONNECTED || s === PortState.RECONNECTING) {
+      if (val === prevPort) {
+        await patchSettings({ currentPort: val });
+        return;
+      }
       if (!val) {
+        transition(PortEvent.CLOSE_START, { portName: null });
         try {
           await invoke('close_port');
         } catch (e) {
           console.error('close_port error:', e);
         }
-        reconnecting = false;
-        portOpen = false;
-        statusClass = 'port-status';
-        statusTitleKey = 'common.disconnected';
-        applyPortUI();
-        toggleBtn.disabled = true;
-        document.dispatchEvent(new CustomEvent('port-state-change', { detail: { open: false } }));
-      } else {
-        statusClass = 'port-status';
-        statusTitleKey = 'common.disconnected';
-        applyPortUI();
-        const t0 = Date.now();
-        try {
-          await invoke('switch_port', {
-            path: val,
-            baud: baudRate,
-            charSize: charSize,
-            stopBits: stopBits,
-            parity: parity,
-            flowControl: flowControl,
-          });
-          const elapsed = Date.now() - t0;
-          if (elapsed < 250) {
-            await new Promise(r => setTimeout(r, 250 - elapsed));
-          }
-          reconnecting = false;
-          portOpen = true;
-          statusClass = 'port-status connected';
-          statusTitleKey = 'common.connected';
-          applyPortUI();
-          toggleBtn.disabled = false;
-          document.dispatchEvent(new CustomEvent('port-state-change', { detail: { open: true } }));
-        } catch (e) {
-          console.error('switch_port error:', e);
-          reconnecting = false;
-          portOpen = false;
-          statusClass = 'port-status error';
-          statusTitleKey = 'common.connectionFailed';
-          applyPortUI();
-          toggleBtn.disabled = false;
-          document.dispatchEvent(new CustomEvent('port-state-change', { detail: { open: false } }));
-        }
+        transition(PortEvent.CLOSED);
+        await patchSettings({ currentPort: val });
+        return;
       }
-    } else {
-      toggleBtn.disabled = !currentPort;
+      transition(PortEvent.OPEN_START, { portName: val });
+      const t0 = Date.now();
+      try {
+        await invoke('switch_port', {
+          path: val,
+          baud: baudRate,
+          charSize: charSize,
+          stopBits: stopBits,
+          parity: parity,
+          flowControl: flowControl,
+        });
+        const elapsed = Date.now() - t0;
+        if (elapsed < 250) {
+          await new Promise(r => setTimeout(r, 250 - elapsed));
+        }
+        transition(PortEvent.OPEN_OK);
+      } catch (e) {
+        console.error('switch_port error:', e);
+        transition(PortEvent.OPEN_FAIL);
+        statusEl.className = 'port-status error';
+        statusEl.title = t('common.connectionFailed');
+      }
+      await patchSettings({ currentPort: val });
+      return;
     }
 
+    transition(PortEvent.SELECT, { portName: val || null });
     await patchSettings({ currentPort: val });
   }
 
@@ -149,14 +159,14 @@ export function initMenu() {
         placeholder.dataset.value = '';
         placeholder.addEventListener('click', () => selectComOption(placeholder));
         comDropdown.appendChild(placeholder);
-        if (!reconnecting) {
+        if (portFSM.state !== PortState.RECONNECTING) {
           placeholder.classList.add('selected');
           comText.textContent = t('menu.selectPort');
           currentPort = null;
-          toggleBtn.disabled = true;
         } else {
           comText.textContent = currentPort || t('menu.selectPort');
         }
+        applyPortUI();
         return;
       }
 
@@ -177,11 +187,11 @@ export function initMenu() {
       });
 
       if (foundSaved) {
-        toggleBtn.disabled = false;
-      } else if (!reconnecting) {
+        applyPortUI();
+      } else if (portFSM.state !== PortState.RECONNECTING) {
         comText.textContent = t('menu.selectPort');
         currentPort = null;
-        toggleBtn.disabled = true;
+        applyPortUI();
       }
     } catch (e) {
       console.error('list_ports error:', e);
@@ -270,7 +280,7 @@ export function initMenu() {
     closeBaudDropdown();
     await patchSettings({ baudRate });
 
-    if (portOpen) {
+    if (portFSM.state === PortState.CONNECTED) {
       try {
         await invoke('set_baud_rate', {
           path: currentPort,
@@ -282,11 +292,9 @@ export function initMenu() {
         });
       } catch (e) {
         console.error('baud rate change error:', e);
-        portOpen = false;
-        statusClass = 'port-status error';
-        statusTitleKey = 'common.settingsFailed';
-        applyPortUI();
-        document.dispatchEvent(new CustomEvent('port-state-change', { detail: { open: false } }));
+        transition(PortEvent.CLOSED);
+        statusEl.className = 'port-status error';
+        statusEl.title = t('common.settingsFailed');
       }
     }
   }
@@ -334,35 +342,20 @@ export function initMenu() {
   refreshBtn.addEventListener('click', refresh);
 
   toggleBtn.addEventListener('click', async () => {
-    if (reconnecting) {
-      reconnecting = false;
-      toggleBtn.disabled = true;
+    const s = portFSM.state;
+    if (s === PortState.CONNECTED || s === PortState.RECONNECTING) {
+      transition(PortEvent.CLOSE_START);
       try {
         await invoke('close_port');
       } catch (e) {
         console.error('close_port error:', e);
       }
-      portOpen = false;
-      statusClass = 'port-status';
-      statusTitleKey = 'common.disconnected';
-      applyPortUI();
-      toggleBtn.disabled = false;
-      document.dispatchEvent(new CustomEvent('port-state-change', { detail: { open: false } }));
+      transition(PortEvent.CLOSED);
       return;
     }
-    if (portOpen) {
-      try {
-        await invoke('close_port');
-        portOpen = false;
-        statusClass = 'port-status';
-        statusTitleKey = 'common.disconnected';
-        applyPortUI();
-        document.dispatchEvent(new CustomEvent('port-state-change', { detail: { open: false } }));
-      } catch (e) {
-        console.error('close_port error:', e);
-      }
-    } else {
+    if (s === PortState.DISCONNECTED) {
       if (!currentPort) return;
+      transition(PortEvent.OPEN_START, { portName: currentPort });
       try {
         await invoke('open_port', {
           path: currentPort,
@@ -372,17 +365,12 @@ export function initMenu() {
           parity: parity,
           flowControl: flowControl,
         });
-        portOpen = true;
-        statusClass = 'port-status connected';
-        statusTitleKey = 'common.connected';
-        applyPortUI();
-        document.dispatchEvent(new CustomEvent('port-state-change', { detail: { open: true } }));
+        transition(PortEvent.OPEN_OK);
       } catch (e) {
         console.error('open_port error:', e);
-        statusClass = 'port-status error';
-        statusTitleKey = 'common.connectionFailed';
-        applyPortUI();
-        toggleBtn.disabled = false;
+        transition(PortEvent.OPEN_FAIL);
+        statusEl.className = 'port-status error';
+        statusEl.title = t('common.connectionFailed');
       }
     }
   });
@@ -458,13 +446,7 @@ export function initMenu() {
   });
 
   document.addEventListener('port-closed', () => {
-    reconnecting = false;
-    portOpen = false;
-    statusClass = 'port-status';
-    statusTitleKey = 'common.disconnected';
-    applyPortUI();
-    toggleBtn.disabled = false;
-    document.dispatchEvent(new CustomEvent('port-state-change', { detail: { open: false } }));
+    transition(PortEvent.CLOSED);
     if (!comEl.classList.contains('open')) refresh();
   });
 }
@@ -570,4 +552,4 @@ AI agent 可通过 MCP 协议实时读取串口数据、查询状态、发送指
   });
 }
 
-export function isPortOpen() { return portOpen; }
+export function isPortOpen() { return portFSM.open; }

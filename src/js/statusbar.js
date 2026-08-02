@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
-import { listen } from '@tauri-apps/api/event';
 import { getSettings, patchSettings, formatByteCount } from './utils.js';
 import { t } from './i18n.js';
+import { PortState, portFSM } from './serial-state.js';
 
 export async function initStatusBar() {
   let portConnected = false;
@@ -15,15 +15,13 @@ export async function initStatusBar() {
   const statSel = document.getElementById('stat-sel');
   const portInfo = document.getElementById('port-info');
 
-  document.addEventListener('port-state-change', (e) => {
-    portConnected = e.detail.open;
-    if (!e.detail.open) portInfo.innerHTML = `<span>${t('common.disconnected')}</span>`;
-  });
-
-  listen('port-reconnecting', (e) => {
-    portConnected = false;
-    const p = e.payload || {};
-    portInfo.innerHTML = t('statusbar.reconnectingInfo', { name: p.name || '', baud: p.baud || '' });
+  portFSM.on((state, fsm) => {
+    portConnected = state === PortState.CONNECTED;
+    if (state === PortState.RECONNECTING) {
+      portInfo.innerHTML = t('statusbar.reconnectingInfo', { name: fsm.portName || '', baud: fsm.baud || '' });
+    } else if (!portConnected) {
+      portInfo.innerHTML = `<span>${t('common.disconnected')}</span>`;
+    }
   });
 
   const saved = await getSettings();
@@ -65,7 +63,11 @@ export async function initStatusBar() {
   document.addEventListener('i18n-changed', () => {
     statTx.title = t('common.doubleClickCopy');
     statRx.title = t('common.doubleClickCopy');
-    if (!portConnected) portInfo.innerHTML = `<span>${t('common.disconnected')}</span>`;
+    if (portFSM.state === PortState.RECONNECTING) {
+      portInfo.innerHTML = t('statusbar.reconnectingInfo', { name: portFSM.portName || '', baud: portFSM.baud || '' });
+    } else if (!portFSM.open) {
+      portInfo.innerHTML = `<span>${t('common.disconnected')}</span>`;
+    }
   });
 
   function displayTx(raw) {

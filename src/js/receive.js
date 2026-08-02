@@ -4,6 +4,7 @@ import { timestamp, bytesToHex, getSettings } from './utils.js';
 import { termWrite, clearTerminal } from './terminal.js';
 import { t } from './i18n.js';
 import { ReceiveZoom } from './zoom.js';
+import { FrameLayout } from './frame-layout.js';
 
 export let isTerminalMode = false;
 export function setTerminalMode(v) { isTerminalMode = v; }
@@ -392,6 +393,7 @@ function appendLine(text) {
 }
 
 let openLine = null;
+const layout = new FrameLayout();
 
 function appendToOpenLine(text) {
   if (!receiveContent) return;
@@ -410,6 +412,22 @@ function appendToOpenLine(text) {
   openLine = line || null;
 }
 
+function applyLayoutActions(actions) {
+  let lastLine = null;
+  for (const a of actions) {
+    if (a.type === 'append') {
+      appendToOpenLine(a.text);
+    } else {
+      lastLine = appendLine(a.text) || null;
+    }
+  }
+  if (!layout.open) {
+    openLine = null;
+  } else if (lastLine) {
+    openLine = lastLine;
+  }
+}
+
 export async function appendData(bytes, direction) {
   lastDirection = direction;
 
@@ -425,15 +443,10 @@ export async function appendData(bytes, direction) {
     return;
   }
 
+  const ts = `[${direction}-${timestamp()}]`;
+
   if (hexDisplay) {
-    const hex = bytesToHex(bytes);
-    if (showTimestamp) {
-      appendLine(`[${direction}-${timestamp()}] ${hex}`);
-      openLine = null;
-    } else {
-      const sep = openLine && openLine.isConnected && openLine.textContent ? ' ' : '';
-      appendToOpenLine(sep + hex);
-    }
+    applyLayoutActions(layout.push(bytesToHex(bytes), { hex: true }));
     return;
   }
 
@@ -445,33 +458,7 @@ export async function appendData(bytes, direction) {
   }
   if (!text) return;
 
-  const parts = text.split(/\r\n|\r|\n/);
-  const trailingNL = /[\r\n]$/.test(text);
-  const end = trailingNL ? parts.length - 1 : parts.length;
-
-  if (showTimestamp) {
-    appendLine(`[${direction}-${timestamp()}] ${parts[0]}`);
-    openLine = null;
-    for (let i = 1; i < end; i++) {
-      appendLine(parts[i]);
-      openLine = null;
-    }
-    if (trailingNL) appendLine('');
-    return;
-  }
-
-  if (parts[0] !== '') {
-    appendToOpenLine(parts[0]);
-  } else {
-    openLine = null;
-  }
-  for (let i = 1; i < end; i++) {
-    const line = appendLine(parts[i]);
-    openLine = i === end - 1 ? line || null : null;
-  }
-  if (trailingNL) {
-    openLine = null;
-  }
+  applyLayoutActions(layout.push(text, { timestamp: showTimestamp, ts }));
 }
 
 function appendSentText(text) {
@@ -561,6 +548,7 @@ function clearReceiveLines() {
     receiveContent.innerHTML = '';
   }
   openLine = null;
+  layout.open = false;
   foldActive = false;
   foldBadge = null;
   foldText = '';
