@@ -29,7 +29,6 @@ const defaults = {
   sendChunkInterval: 10,
   sendChunkSize: 1024,
   mode: 'standard',
-  receiveNewline: 'auto',
   foldRepeatCount: 5,
   sendAreaHeight: 80,
   closeBehavior: 'ask',

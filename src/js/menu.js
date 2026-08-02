@@ -176,7 +176,9 @@ export function initMenu() {
         comDropdown.appendChild(opt);
       });
 
-      if (!foundSaved && !reconnecting) {
+      if (foundSaved) {
+        toggleBtn.disabled = false;
+      } else if (!reconnecting) {
         comText.textContent = t('menu.selectPort');
         currentPort = null;
         toggleBtn.disabled = true;

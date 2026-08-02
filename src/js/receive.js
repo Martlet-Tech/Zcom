@@ -12,7 +12,6 @@ let autoScroll = true;
 let hexDisplay = false;
 let showTimestamp = true;
 let encoding = 'utf-8';
-let receiveNewline = 'auto';
 let receiveContent = null;
 let receiveArea = null;
 const MAX_LINES = 10000;
@@ -389,28 +388,26 @@ function appendLine(text) {
   if (autoScroll) {
     receiveArea.scrollTop = receiveArea.scrollHeight;
   }
+  return line;
 }
 
-function appendChunkLine(text) {
-  if (showTimestamp) text = `[${lastDirection}-${timestamp()}] ${text}`;
-  appendLine(text);
-}
+let openLine = null;
 
-function appendStreamText(text) {
+function appendToOpenLine(text) {
   if (!receiveContent) return;
-  const last = receiveContent.lastElementChild;
-  if (!last) {
-    appendChunkLine(text);
+  if (openLine && openLine.isConnected) {
+    if (text) openLine.textContent += text;
+    mcpBuffer.push(text);
+    if (filterText) {
+      openLine.style.display = matchesFilter(openLine.textContent) ? '' : 'none';
+    }
+    if (autoScroll) {
+      receiveArea.scrollTop = receiveArea.scrollHeight;
+    }
     return;
   }
-  last.textContent += text;
-  mcpBuffer.push(text);
-  if (filterText) {
-    last.style.display = matchesFilter(last.textContent) ? '' : 'none';
-  }
-  if (autoScroll) {
-    receiveArea.scrollTop = receiveArea.scrollHeight;
-  }
+  const line = appendLine(text);
+  openLine = line || null;
 }
 
 export async function appendData(bytes, direction) {
@@ -429,7 +426,14 @@ export async function appendData(bytes, direction) {
   }
 
   if (hexDisplay) {
-    appendChunkLine(bytesToHex(bytes));
+    const hex = bytesToHex(bytes);
+    if (showTimestamp) {
+      appendLine(`[${direction}-${timestamp()}] ${hex}`);
+      openLine = null;
+    } else {
+      const sep = openLine && openLine.isConnected && openLine.textContent ? ' ' : '';
+      appendToOpenLine(sep + hex);
+    }
     return;
   }
 
@@ -439,22 +443,34 @@ export async function appendData(bytes, direction) {
   } catch {
     text = new TextDecoder('utf-8', { fatal: false }).decode(new Uint8Array(bytes));
   }
-
-  if (receiveNewline === 'chunks') {
-    appendChunkLine(text);
-    return;
-  }
-
-  if (receiveNewline === 'stream') {
-    appendStreamText(text);
-    return;
-  }
+  if (!text) return;
 
   const parts = text.split(/\r\n|\r|\n/);
-  const count = /[\r\n]$/.test(text) ? parts.length - 1 : parts.length;
-  for (let i = 0; i < count; i++) {
-    const line = showTimestamp ? `[${direction}-${timestamp()}] ${parts[i]}` : parts[i];
-    appendLine(line);
+  const trailingNL = /[\r\n]$/.test(text);
+  const end = trailingNL ? parts.length - 1 : parts.length;
+
+  if (showTimestamp) {
+    appendLine(`[${direction}-${timestamp()}] ${parts[0]}`);
+    openLine = null;
+    for (let i = 1; i < end; i++) {
+      appendLine(parts[i]);
+      openLine = null;
+    }
+    if (trailingNL) appendLine('');
+    return;
+  }
+
+  if (parts[0] !== '') {
+    appendToOpenLine(parts[0]);
+  } else {
+    openLine = null;
+  }
+  for (let i = 1; i < end; i++) {
+    const line = appendLine(parts[i]);
+    openLine = i === end - 1 ? line || null : null;
+  }
+  if (trailingNL) {
+    openLine = null;
   }
 }
 
@@ -474,11 +490,6 @@ export async function initReceive() {
   hexDisplay = s.hexDisplay;
   showTimestamp = s.showTimestamp;
   encoding = s.encoding || 'utf-8';
-  receiveNewline = s.receiveNewline || 'auto';
-
-  document.addEventListener('receive-newline-changed', (e) => {
-    receiveNewline = e.detail.receiveNewline;
-  });
 
   const receiveZoom = new ReceiveZoom(receiveArea, receiveContent);
 
@@ -549,6 +560,7 @@ function clearReceiveLines() {
   if (receiveContent) {
     receiveContent.innerHTML = '';
   }
+  openLine = null;
   foldActive = false;
   foldBadge = null;
   foldText = '';
