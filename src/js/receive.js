@@ -3,6 +3,7 @@ import { listen } from '@tauri-apps/api/event';
 import { timestamp, bytesToHex, getSettings } from './utils.js';
 import { termWrite, clearTerminal } from './terminal.js';
 import { t } from './i18n.js';
+import { ReceiveZoom } from './zoom.js';
 
 export let isTerminalMode = false;
 export function setTerminalMode(v) { isTerminalMode = v; }
@@ -479,68 +480,12 @@ export async function initReceive() {
     receiveNewline = e.detail.receiveNewline;
   });
 
-  let zoomLevel = 1.0;
-  let zoomBar = null;
-
-  function createZoomBar() {
-    zoomBar = document.createElement('div');
-    zoomBar.id = 'zoom-bar';
-    zoomBar.className = 'hidden';
-
-    const btnIn = document.createElement('button');
-    btnIn.className = 'zoom-bar-btn';
-    btnIn.textContent = '+';
-    btnIn.addEventListener('click', () => setZoom(zoomLevel + 0.1));
-
-    const sep1 = document.createElement('span');
-    sep1.className = 'zoom-bar-sep';
-    sep1.textContent = '|';
-
-    const label = document.createElement('span');
-    label.className = 'zoom-bar-label';
-
-    const btnReset = document.createElement('button');
-    btnReset.className = 'zoom-bar-reset';
-    btnReset.textContent = t('common.reset');
-    btnReset.addEventListener('click', () => setZoom(1));
-
-    const sep2 = document.createElement('span');
-    sep2.className = 'zoom-bar-sep';
-    sep2.textContent = '|';
-
-    const btnOut = document.createElement('button');
-    btnOut.className = 'zoom-bar-btn';
-    btnOut.textContent = '\u2212';
-    btnOut.addEventListener('click', () => setZoom(zoomLevel - 0.1));
-
-    zoomBar.appendChild(btnIn);
-    zoomBar.appendChild(sep1);
-    zoomBar.appendChild(label);
-    zoomBar.appendChild(btnReset);
-    zoomBar.appendChild(sep2);
-    zoomBar.appendChild(btnOut);
-    receiveArea.appendChild(zoomBar);
-  }
-
-  function updateZoomBar() {
-    if (!zoomBar) return;
-    const pct = Math.round(zoomLevel * 100);
-    zoomBar.querySelector('.zoom-bar-label').textContent = pct + '%';
-    zoomBar.classList.toggle('hidden', zoomLevel === 1);
-  }
-
-  function setZoom(v) {
-    zoomLevel = Math.max(0.3, Math.min(5, v));
-    receiveContent.style.zoom = zoomLevel;
-    updateZoomBar();
-  }
-
-  createZoomBar();
+  const receiveZoom = new ReceiveZoom(receiveArea, receiveContent);
 
   receiveArea.addEventListener('wheel', (e) => {
     if (e.ctrlKey) {
       e.preventDefault();
-      setZoom(zoomLevel - e.deltaY * 0.002);
+      receiveZoom.setZoom(receiveZoom.getLevel() - e.deltaY * 0.002);
     }
   }, { passive: false });
 

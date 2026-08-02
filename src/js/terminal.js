@@ -2,15 +2,19 @@ import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { invoke } from '@tauri-apps/api/core';
 import '@xterm/xterm/css/xterm.css';
+import { TerminalZoom, getZoomLevel } from './zoom.js';
 
 let term = null;
 let fitAddon = null;
+let termZoom = null;
+let baseFontSize = 14;
 
 export function createTerminal(settings) {
   if (term) return;
 
+  baseFontSize = settings.receiveSize || 14;
   term = new Terminal({
-    fontSize: settings.receiveSize || 14,
+    fontSize: Math.max(4, Math.round(baseFontSize * getZoomLevel())),
     fontFamily: settings.receiveFont || 'Consolas',
     theme: {
       background: settings.bgColor || '#0d0d1a',
@@ -27,6 +31,7 @@ export function createTerminal(settings) {
   const container = document.getElementById('terminal-container');
   container.classList.remove('hidden');
   term.open(container);
+  termZoom = new TerminalZoom(container, term, baseFontSize);
 
   requestAnimationFrame(() => fitAddon.fit());
 
@@ -37,6 +42,8 @@ export function createTerminal(settings) {
 }
 
 export function destroyTerminal() {
+  termZoom?.destroy();
+  termZoom = null;
   if (term) {
     term.dispose();
     term = null;
@@ -60,12 +67,13 @@ export function clearTerminal() {
 
 export function updateTerminalTheme(settings) {
   if (term) {
+    baseFontSize = settings.receiveSize || 14;
     term.options.theme = {
       background: settings.bgColor || '#0d0d1a',
       foreground: settings.receiveColor || '#00ff00',
       cursor: settings.receiveColor || '#00ff00',
     };
-    term.options.fontSize = settings.receiveSize || 14;
+    term.options.fontSize = Math.max(4, Math.round(baseFontSize * getZoomLevel()));
     term.options.fontFamily = settings.receiveFont || 'Consolas';
   }
 }

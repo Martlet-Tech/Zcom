@@ -114,6 +114,13 @@ select:focus, input:focus, textarea:focus {
   font-weight: 600;
   color: var(--fg-dim);
 }
+.titlebar-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
 .mcp-btn {
   background: transparent;
   border: 1px solid var(--border);
@@ -365,6 +372,7 @@ select:focus, input:focus, textarea:focus {
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
+  background: var(--bg);
 }
 
 /* ===== Receive Area ===== */
@@ -400,7 +408,10 @@ select:focus, input:focus, textarea:focus {
   background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: 14px;
+  font-family: var(--receive-font);
   font-size: 12px;
+  line-height: 20px;
+  color: var(--receive-color);
   opacity: 0.92;
   pointer-events: none;
   white-space: nowrap;
@@ -416,6 +427,9 @@ select:focus, input:focus, textarea:focus {
   line-height: 1;
   padding: 0 6px;
   border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .zoom-bar-btn:hover { background: var(--bg3); }
 .zoom-bar-sep {
@@ -426,6 +440,7 @@ select:focus, input:focus, textarea:focus {
   min-width: 44px;
   text-align: center;
   pointer-events: none;
+  color: var(--receive-color);
 }
 .zoom-bar-reset {
   pointer-events: auto;

@@ -57,11 +57,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       const newMode = btn.dataset.mode;
       const isTerminal = newMode === 'terminal';
 
+      const s = await getSettings();
       setTerminalMode(isTerminal);
       applyTerminalUI(isTerminal);
 
       if (isTerminal) {
-        const s = await getSettings();
         createTerminal(s);
       } else {
         destroyTerminal();
