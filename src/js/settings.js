@@ -184,6 +184,10 @@ export async function initSettings() {
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) close();
   });
+  document.addEventListener('echo-enabled-change', (e) => {
+    const el = document.getElementById('setting-echo-enabled');
+    if (el) el.checked = e.detail.on;
+  });
   applyBtn.addEventListener('click', async () => {
     await applySettings();
     close();

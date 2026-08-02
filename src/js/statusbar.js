@@ -52,6 +52,10 @@ export async function initStatusBar() {
     document.dispatchEvent(new CustomEvent('echo-enabled-change', { detail: { on: chkEcho.checked } }));
   });
 
+  document.addEventListener('settings-applied', (e) => {
+    chkEcho.checked = e.detail.echoEnabled !== false;
+  });
+
   encSelect.addEventListener('change', async () => {
     await patchSettings({ encoding: encSelect.value });
     document.dispatchEvent(new CustomEvent('encoding-change', { detail: { encoding: encSelect.value } }));
