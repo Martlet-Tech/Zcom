@@ -1,10 +1,11 @@
 import { getSettings, patchSettings } from './utils.js';
 import { createElement, Square, CheckSquare } from './icons.js';
+import { t } from './i18n.js';
 
 const VIEW_GROUPS = [
-  { id: 'filter', label: '过滤栏' },
-  { id: 'file', label: '文件操作' },
-  { id: 'checksum', label: '附加校验' },
+  { id: 'filter', key: 'view.filter' },
+  { id: 'file', key: 'view.file' },
+  { id: 'checksum', key: 'view.checksum' },
 ];
 
 export async function initViewMenu() {
@@ -21,13 +22,15 @@ export async function initViewMenu() {
       const item = document.createElement('div');
       item.className = 'view-item' + (hiddenGroups.includes(g.id) ? '' : ' checked');
       item.dataset.group = g.id;
-      item.innerHTML = `<span class="view-check"></span><span>${g.label}</span>`;
+      item.innerHTML = `<span class="view-check"></span><span>${t(g.key)}</span>`;
       const checkSpan = item.querySelector('.view-check');
       checkSpan.appendChild(createElement(hiddenGroups.includes(g.id) ? Square : CheckSquare));
       item.addEventListener('click', () => toggleGroup(g.id));
       dd.appendChild(item);
     });
   }
+
+  document.addEventListener('i18n-changed', render);
 
   function toggleGroup(id) {
     const idx = hiddenGroups.indexOf(id);

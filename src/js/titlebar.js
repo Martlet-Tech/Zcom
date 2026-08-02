@@ -3,8 +3,10 @@ import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { message } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
 import { getSettings, patchSettings } from './utils.js';
+import { t } from './i18n.js';
 
 let pinned = false;
+let currentPortName = null;
 
 export function initTitlebar() {
   const win = getCurrentWindow();
@@ -25,13 +27,13 @@ export function initTitlebar() {
       closeAll();
       return;
     }
-    const result = await message('关闭主窗口后，多字符串窗口也将关闭。', {
-      title: 'Zcom调试助手',
-      buttons: { yes: '隐藏到托盘', no: '关闭', cancel: '取消' }
+    const result = await message(t('titlebar.closeConfirm'), {
+      title: t('app.title'),
+      buttons: { yes: t('titlebar.hideToTray'), no: t('common.close'), cancel: t('common.cancel') }
     });
-    if (result === '隐藏到托盘') {
+    if (result === t('titlebar.hideToTray')) {
       win.hide();
-    } else if (result === '关闭') {
+    } else if (result === t('common.close')) {
       closeAll();
     }
   }
@@ -58,14 +60,14 @@ export function initTitlebar() {
       const status = await invoke('mcp_get_status');
       if (status.running) {
         mcpDot.className = 'mcp-dot on';
-        mcpBtn.title = `MCP 运行中 (端口 ${status.port}) · 点击关闭`;
+        mcpBtn.title = t('titlebar.mcpRunning', { port: status.port });
       } else {
         mcpDot.className = 'mcp-dot';
-        mcpBtn.title = 'MCP 已停止 · 点击启用';
+        mcpBtn.title = t('titlebar.mcpStopped');
       }
     } catch {
       mcpDot.className = 'mcp-dot';
-      mcpBtn.title = 'MCP 不可用';
+      mcpBtn.title = t('titlebar.mcpUnavailable');
     }
   }
 
@@ -89,10 +91,17 @@ export function initTitlebar() {
   document.addEventListener('port-state-change', async (e) => {
     if (e.detail.open) {
       const { currentPort } = await getSettings();
-      invoke('set_window_title', { title: currentPort || '串口' });
+      currentPortName = currentPort;
+      invoke('set_window_title', { title: currentPort || t('app.portName') });
     } else {
-      invoke('set_window_title', { title: 'Zcom调试助手' });
+      currentPortName = null;
+      invoke('set_window_title', { title: t('app.title') });
     }
+  });
+
+  document.addEventListener('i18n-changed', () => {
+    updateMcpUI();
+    invoke('set_window_title', { title: currentPortName || t('app.title') });
   });
 
   return { getPinned: () => pinned };

@@ -1,0 +1,147 @@
+{
+  "app": {
+    "title": "ZCOM Serial Assistant",
+    "portName": "Serial Port"
+  },
+  "common": {
+    "open": "Open",
+    "close": "Close",
+    "cancel": "Cancel",
+    "ok": "OK",
+    "apply": "Apply",
+    "reset": "Reset",
+    "restoreDefault": "Restore Defaults",
+    "copy": "Copy",
+    "disconnected": "Not connected",
+    "connected": "Connected",
+    "connectionFailed": "Connection failed",
+    "settingsFailed": "Apply failed",
+    "doubleClickCopy": "Double-click to copy"
+  },
+  "titlebar": {
+    "mcpControl": "MCP service control",
+    "multiString": "Multi-string sender",
+    "pin": "Always on top",
+    "minimize": "Minimize",
+    "maximize": "Maximize",
+    "close": "Close",
+    "closeConfirm": "Closing the main window will also close the multi-string window.",
+    "hideToTray": "Hide to Tray",
+    "mcpRunning": "MCP running (port {port}) · click to stop",
+    "mcpStopped": "MCP stopped · click to enable",
+    "mcpUnavailable": "MCP unavailable"
+  },
+  "menu": {
+    "debug": "Debug",
+    "terminal": "Terminal",
+    "settings": "Settings",
+    "view": "View",
+    "help": "Help",
+    "selectPort": "— Select port —",
+    "refreshPorts": "Refresh ports",
+    "mcpService": "MCP Service",
+    "devtools": "Developer Tools",
+    "about": "About",
+    "aboutText": "ZCOM Serial Debug Assistant v{ver}\nBuilt with Tauri + Rust"
+  },
+  "receive": {
+    "clear": "Clear",
+    "sendPlaceholder": "Enter data to send...",
+    "send": "Send",
+    "foldRepeat": "Fold repeats below"
+  },
+  "filter": {
+    "placeholder": "Filter...",
+    "caseSensitive": "Case sensitive",
+    "regex": "Regex mode",
+    "clear": "Clear filter"
+  },
+  "file": {
+    "open": "Open File",
+    "noFile": "No file selected",
+    "send": "Send File",
+    "save": "Save Receive",
+    "abort": "Abort",
+    "sendTime": "Time {seconds}s   Avg {speed} KB/s"
+  },
+  "checksum": {
+    "enable": "Checksum",
+    "position": "Position:",
+    "positionTitle": "Positive counts from the start (+0 = before the 1st byte), negative from the end (-1 = after the last byte)",
+    "checksum": "Checksum:"
+  },
+  "statusbar": {
+    "hexSend": "Hex send",
+    "hexDisplay": "Hex display",
+    "timestamp": "Timestamp",
+    "fold": "Fold",
+    "encoding": "Encoding",
+    "connectedInfo": "{name} connected {baud} {dataBits}N{stopBits}"
+  },
+  "settings": {
+    "title": "System Settings",
+    "language": "Language:",
+    "theme": "Theme:",
+    "dark": "Dark",
+    "light": "Light",
+    "system": "System",
+    "highContrast": "High Contrast",
+    "fontSize": "UI font size:",
+    "receiveFont": "Receive font:",
+    "receiveSize": "Receive font size:",
+    "receiveColor": "Receive color:",
+    "bgColor": "Background color:",
+    "sendNewline": "Send-area newline:",
+    "raw": "Raw",
+    "lineEnding": "Append on send:",
+    "none": "None",
+    "chunkInterval": "Send chunk interval:",
+    "ms": "ms",
+    "every": "every",
+    "bytes": "bytes",
+    "receiveNewline": "Receive newline:",
+    "auto": "Auto split",
+    "chunks": "Raw chunks",
+    "stream": "Continuous stream",
+    "foldCount": "Fold repeat threshold:",
+    "closeBehavior": "Close behavior:",
+    "hideToTray": "Hide to Tray",
+    "ask": "Ask",
+    "mcp": "MCP Service:",
+    "enable": "Enable",
+    "port": "Port:"
+  },
+  "serialSettings": {
+    "title": "Serial Port Settings",
+    "dataBits": "Data bits:",
+    "stopBits": "Stop bits:",
+    "parity": "Parity:",
+    "flowControl": "Flow control:"
+  },
+  "mcpDialog": {
+    "copy": "Copy to Clipboard"
+  },
+  "view": {
+    "filter": "Filter Bar",
+    "file": "File Operations",
+    "checksum": "Checksum"
+  },
+  "multi": {
+    "title": "Multi-string Sender",
+    "loop": "Loop send",
+    "add": "Add",
+    "deleteAll": "Delete All",
+    "exportJson": "Export JSON",
+    "importJson": "Import JSON",
+    "clickToInput": "Click to input",
+    "clickToName": "Click to name",
+    "inputContent": "Enter content to send",
+    "inputName": "Enter note name...",
+    "delay": "Delay:",
+    "send": "Send"
+  },
+  "tray": {
+    "show": "Show Main Window",
+    "quit": "Quit"
+  }
+}

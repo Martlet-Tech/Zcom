@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getSettings, patchSettings, formatByteCount } from './utils.js';
+import { t } from './i18n.js';
 
 export async function initStatusBar() {
   let portConnected = false;
@@ -15,7 +16,7 @@ export async function initStatusBar() {
 
   document.addEventListener('port-state-change', (e) => {
     portConnected = e.detail.open;
-    if (!e.detail.open) portInfo.innerHTML = '<span>未连接</span>';
+    if (!e.detail.open) portInfo.innerHTML = `<span>${t('common.disconnected')}</span>`;
   });
 
   const saved = await getSettings();
@@ -51,8 +52,14 @@ export async function initStatusBar() {
 
   statTx.dataset.mode = 'fmt';
   statRx.dataset.mode = 'fmt';
-  statTx.title = '双击可复制';
-  statRx.title = '双击可复制';
+  statTx.title = t('common.doubleClickCopy');
+  statRx.title = t('common.doubleClickCopy');
+
+  document.addEventListener('i18n-changed', () => {
+    statTx.title = t('common.doubleClickCopy');
+    statRx.title = t('common.doubleClickCopy');
+    if (!portConnected) portInfo.innerHTML = `<span>${t('common.disconnected')}</span>`;
+  });
 
   function displayTx(raw) {
     statTx.dataset.raw = raw;
@@ -99,7 +106,7 @@ export async function initStatusBar() {
       const info = await invoke('get_port_info');
       displayTx(info.tx);
       displayRx(info.rx);
-      portInfo.innerHTML = `${info.name} 已连接 ${info.baud} ${info.dataBits}N${info.stopBits}`;
+      portInfo.innerHTML = t('statusbar.connectedInfo', { name: info.name, baud: info.baud, dataBits: info.dataBits, stopBits: info.stopBits });
     } catch {
       // ignore
     }

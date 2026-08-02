@@ -4,6 +4,7 @@ import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile, readFile } from '@tauri-apps/plugin-fs';
 import { getSettings, patchSettings } from './utils.js';
 import { setButtonIcon, Upload, Square } from './icons.js';
+import { t } from './i18n.js';
 
 let portOpen = false;
 let fileSending = false;
@@ -98,6 +99,10 @@ export async function initBottom() {
     fileSendBtn.disabled = !portOpen || !filePathEl.value;
   });
 
+  document.addEventListener('i18n-changed', () => {
+    if (fileSending) setButtonIcon(fileSendBtn, Square, t('file.abort'));
+  });
+
   fileOpenBtn.addEventListener('click', async () => {
     try {
       const path = await open({ multiple: false, filters: [{ name: 'All Files', extensions: ['*'] }] });
@@ -115,7 +120,7 @@ export async function initBottom() {
   fileSendBtn.addEventListener('click', async () => {
     if (fileSending) {
       fileSendAbort = true;
-      setButtonIcon(fileSendBtn, Square, '中止');
+      setButtonIcon(fileSendBtn, Square, t('file.abort'));
       fileSending = false;
       return;
     }
@@ -127,7 +132,7 @@ export async function initBottom() {
     fileSending = true;
     fileSendAbort = false;
     selectedFilePath = filePath;
-    setButtonIcon(fileSendBtn, Square, '中止');
+    setButtonIcon(fileSendBtn, Square, t('file.abort'));
     fileStat.textContent = '0%';
     fileStat.classList.remove('hidden');
 
@@ -160,12 +165,12 @@ export async function initBottom() {
     fileSending = false;
     const aborted = fileSendAbort;
     fileSendAbort = false;
-    setButtonIcon(fileSendBtn, Upload, '发送文件');
+    setButtonIcon(fileSendBtn, Upload, t('file.send'));
 
     if (!aborted && total > 0) {
       const elapsed = (Date.now() - startTime) / 1000;
       const avgSpeed = (total / elapsed / 1024).toFixed(1);
-      fileStat.textContent = `用时 ${elapsed.toFixed(2)}s  平均 ${avgSpeed} KB/s`;
+      fileStat.textContent = t('file.sendTime', { seconds: elapsed.toFixed(2), speed: avgSpeed });
     }
   });
 

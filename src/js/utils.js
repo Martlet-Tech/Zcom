@@ -7,6 +7,7 @@ async function getStore() {
 }
 
 const defaults = {
+  language: 'zh-CN',
   fontSize: 14,
   receiveFont: 'Consolas',
   receiveSize: 14,

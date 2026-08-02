@@ -11,11 +11,17 @@ import { initViewMenu } from './view.js';
 import { initSettings } from './settings.js';
 import { getSettings, patchSettings } from './utils.js';
 import { Keybindings } from './keybindings.js';
+import { t, setLang, applyI18n, getLang, detectLang } from './i18n.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   const settings = await getSettings();
   const mode = settings.mode || 'standard';
   Keybindings.defaults().enable();
+
+  setLang(settings.language || detectLang());
+  applyI18n();
+  invoke('set_tray_menu_language', { lang: getLang() }).catch(() => {});
+  document.addEventListener('i18n-changed', applyI18n);
 
   initIcons();
   initTitlebar();

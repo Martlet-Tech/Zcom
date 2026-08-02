@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { timestamp, bytesToHex, getSettings } from './utils.js';
 import { termWrite, clearTerminal } from './terminal.js';
+import { t } from './i18n.js';
 
 export let isTerminalMode = false;
 export function setTerminalMode(v) { isTerminalMode = v; }
@@ -146,7 +147,7 @@ function showContextMenu(e, badge) {
   contextMenu.innerHTML = '';
   const copyItem = document.createElement('div');
   copyItem.className = 'context-item';
-  copyItem.textContent = '复制';
+  copyItem.textContent = t('common.copy');
   copyItem.addEventListener('click', () => {
     navigator.clipboard.writeText(badge.dataset.raw || badge.querySelector('.fold-text').textContent);
     dismissContextMenu();
@@ -154,7 +155,7 @@ function showContextMenu(e, badge) {
   contextMenu.appendChild(copyItem);
   const foldItem = document.createElement('div');
   foldItem.className = 'context-item';
-  foldItem.textContent = '折叠以下重复项';
+  foldItem.textContent = t('receive.foldRepeat');
   foldItem.addEventListener('click', () => {
     foldConsecutiveBelow(badge);
     dismissContextMenu();
@@ -228,7 +229,7 @@ function showLineContextMenu(e, line) {
   contextMenu.innerHTML = '';
   const copyItem = document.createElement('div');
   copyItem.className = 'context-item';
-  copyItem.textContent = '复制';
+  copyItem.textContent = t('common.copy');
   copyItem.addEventListener('click', () => {
     const sel = window.getSelection();
     const selText = sel ? sel.toString().trim() : '';
@@ -242,7 +243,7 @@ function showLineContextMenu(e, line) {
   contextMenu.appendChild(copyItem);
   const foldItem = document.createElement('div');
   foldItem.className = 'context-item';
-  foldItem.textContent = '折叠以下重复项';
+  foldItem.textContent = t('receive.foldRepeat');
   foldItem.addEventListener('click', () => {
     foldFromElement(line);
     dismissContextMenu();
@@ -500,7 +501,7 @@ export async function initReceive() {
 
     const btnReset = document.createElement('button');
     btnReset.className = 'zoom-bar-reset';
-    btnReset.textContent = '重置';
+    btnReset.textContent = t('common.reset');
     btnReset.addEventListener('click', () => setZoom(1));
 
     const sep2 = document.createElement('span');

@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { getVersion } from '@tauri-apps/api/app';
 import { getSettings, patchSettings } from './utils.js';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { t } from './i18n.js';
 
 let currentPort = null;
 let portOpen = false;
@@ -20,6 +21,18 @@ export function initMenu() {
   const toggleBtn = document.getElementById('btn-toggle-port');
   const statusEl = document.getElementById('port-status');
   const settingsBtn = document.getElementById('btn-settings');
+
+  let statusTitleKey = 'common.disconnected';
+  let statusClass = 'port-status';
+
+  function applyPortUI() {
+    toggleBtn.textContent = portOpen ? t('common.close') : t('common.open');
+    statusEl.className = statusClass;
+    statusEl.title = t(statusTitleKey);
+    if (!currentPort) comText.textContent = t('menu.selectPort');
+  }
+
+  document.addEventListener('i18n-changed', applyPortUI);
 
   function setComDisabled(d) {
     comEl.classList.toggle('disabled', d);
@@ -40,7 +53,7 @@ export function initMenu() {
     el.classList.add('selected');
     const val = el.dataset.value || '';
     currentPort = val || null;
-    comText.textContent = el.textContent || '— 选择串口 —';
+    comText.textContent = el.textContent || t('menu.selectPort');
     toggleBtn.disabled = !currentPort;
     closeComDropdown();
     await patchSettings({ currentPort: val });
@@ -54,7 +67,7 @@ export function initMenu() {
 
       const placeholder = document.createElement('div');
       placeholder.className = 'cs-option placeholder';
-      placeholder.textContent = '— 选择串口 —';
+      placeholder.textContent = t('menu.selectPort');
       placeholder.dataset.value = '';
       placeholder.addEventListener('click', () => selectComOption(placeholder));
       comDropdown.appendChild(placeholder);
@@ -80,7 +93,7 @@ export function initMenu() {
         toggleBtn.disabled = false;
       } else {
         placeholder.classList.add('selected');
-        comText.textContent = '— 选择串口 —';
+        comText.textContent = t('menu.selectPort');
         currentPort = null;
         toggleBtn.disabled = true;
       }
@@ -184,9 +197,9 @@ export function initMenu() {
       } catch (e) {
         console.error('baud rate change error:', e);
         portOpen = false;
-        toggleBtn.textContent = '打开';
-        statusEl.className = 'port-status error';
-        statusEl.title = '设置失败';
+        statusClass = 'port-status error';
+        statusTitleKey = 'common.settingsFailed';
+        applyPortUI();
         setComDisabled(false);
         document.dispatchEvent(new CustomEvent('port-state-change', { detail: { open: false } }));
       }
@@ -240,9 +253,9 @@ export function initMenu() {
       try {
         await invoke('close_port');
         portOpen = false;
-        toggleBtn.textContent = '打开';
-        statusEl.className = 'port-status';
-        statusEl.title = '未连接';
+        statusClass = 'port-status';
+        statusTitleKey = 'common.disconnected';
+        applyPortUI();
         setComDisabled(false);
         document.dispatchEvent(new CustomEvent('port-state-change', { detail: { open: false } }));
       } catch (e) {
@@ -260,15 +273,16 @@ export function initMenu() {
           flowControl: flowControl,
         });
         portOpen = true;
-        toggleBtn.textContent = '关闭';
-        statusEl.className = 'port-status connected';
-        statusEl.title = '已连接';
+        statusClass = 'port-status connected';
+        statusTitleKey = 'common.connected';
+        applyPortUI();
         setComDisabled(true);
         document.dispatchEvent(new CustomEvent('port-state-change', { detail: { open: true } }));
       } catch (e) {
         console.error('open_port error:', e);
-        statusEl.className = 'port-status error';
-        statusEl.title = '连接失败';
+        statusClass = 'port-status error';
+        statusTitleKey = 'common.connectionFailed';
+        applyPortUI();
         toggleBtn.disabled = false;
       }
     }
@@ -346,9 +360,9 @@ export function initMenu() {
 
   document.addEventListener('port-closed', () => {
     portOpen = false;
-    toggleBtn.textContent = '打开';
-    statusEl.className = 'port-status';
-    statusEl.title = '未连接';
+    statusClass = 'port-status';
+    statusTitleKey = 'common.disconnected';
+    applyPortUI();
     setComDisabled(false);
     document.dispatchEvent(new CustomEvent('port-state-change', { detail: { open: false } }));
   });
@@ -425,7 +439,7 @@ AI agent 可通过 MCP 协议实时读取串口数据、查询状态、发送指
       }
     } else if (action === 'about') {
       const ver = await getVersion();
-      alert(`ZCOM 串口调试助手 v${ver}\n基于 Tauri + Rust`);
+      alert(t('menu.aboutText', { ver }));
     } else if (action === 'mcp') {
       const { mcpPort } = await getSettings();
       const textEl = document.getElementById('mcp-prompt-text');

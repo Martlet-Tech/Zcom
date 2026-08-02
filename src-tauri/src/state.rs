@@ -2,6 +2,14 @@ use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicU8};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
+pub struct LocaleState(pub std::sync::Mutex<String>);
+
+impl Default for LocaleState {
+    fn default() -> Self {
+        Self(std::sync::Mutex::new("zh-CN".to_string()))
+    }
+}
+
 pub struct SerialState {
     pub port: Arc<Mutex<Option<serial2::SerialPort>>>,
     pub port_name: Arc<Mutex<Option<String>>>,

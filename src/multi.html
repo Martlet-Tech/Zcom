@@ -9,23 +9,23 @@
 <body class="multi-body">
   <div id="multi-titlebar">
     <div class="titlebar-drag" data-tauri-drag-region>
-      <span class="titlebar-title">多字符串发送</span>
+      <span class="titlebar-title" data-i18n="multi.title">多字符串发送</span>
     </div>
     <div class="titlebar-controls">
-      <button id="multi-btn-pin" class="title-btn" title="窗口置顶"><i data-lucide="pin"></i></button>
-      <button id="multi-btn-minimize" class="title-btn" title="最小化"><i data-lucide="minus"></i></button>
-      <button id="multi-btn-close" class="title-btn" title="关闭"><i data-lucide="x"></i></button>
+      <button id="multi-btn-pin" class="title-btn" title="窗口置顶" data-i18n-title="titlebar.pin"><i data-lucide="pin"></i></button>
+      <button id="multi-btn-minimize" class="title-btn" title="最小化" data-i18n-title="titlebar.minimize"><i data-lucide="minus"></i></button>
+      <button id="multi-btn-close" class="title-btn" title="关闭" data-i18n-title="common.close"><i data-lucide="x"></i></button>
     </div>
   </div>
 
   <div id="multi-toolbar">
     <label class="chk-label">
-      <input type="checkbox" id="multi-chk-loop" /> 循环发送
+      <input type="checkbox" id="multi-chk-loop" /> <span data-i18n="multi.loop">循环发送</span>
     </label>
-    <button id="multi-btn-add" class="small-btn"><i data-lucide="plus"></i> 添加</button>
-    <button id="multi-btn-del-all" class="small-btn"><i data-lucide="trash-2"></i> 全部删除</button>
-    <button id="multi-btn-export" class="small-btn"><i data-lucide="upload"></i> 导出 JSON</button>
-    <button id="multi-btn-import" class="small-btn"><i data-lucide="download"></i> 导入 JSON</button>
+    <button id="multi-btn-add" class="small-btn"><i data-lucide="plus"></i> <span data-i18n="multi.add">添加</span></button>
+    <button id="multi-btn-del-all" class="small-btn"><i data-lucide="trash-2"></i> <span data-i18n="multi.deleteAll">全部删除</span></button>
+    <button id="multi-btn-export" class="small-btn"><i data-lucide="upload"></i> <span data-i18n="multi.exportJson">导出 JSON</span></button>
+    <button id="multi-btn-import" class="small-btn"><i data-lucide="download"></i> <span data-i18n="multi.importJson">导入 JSON</span></button>
   </div>
 
   <div id="multi-list"></div>

@@ -1,6 +1,7 @@
 import { getSettings, saveSettings } from './utils.js';
 import { emit } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
+import { setLang, getLang, detectLang } from './i18n.js';
 
 let systemThemeMedia = null;
 let systemThemeHandler = null;
@@ -33,6 +34,7 @@ function setupSegmentedListener(container) {
 
 async function loadDialogValues() {
   const ss = await getSettings();
+  document.getElementById('setting-language').value = ss.language || detectLang();
   document.getElementById('setting-font-size').value = ss.fontSize;
   document.getElementById('setting-receive-font').value = ss.receiveFont;
   document.getElementById('setting-receive-size').value = ss.receiveSize;
@@ -117,6 +119,7 @@ export async function initSettings() {
 
   async function applySettings() {
     const settings = {
+      language: document.getElementById('setting-language').value,
       fontSize: parseInt(fontSize.value) || 14,
       receiveFont: receiveFont.value,
       receiveSize: parseInt(receiveSize.value) || 14,
@@ -136,6 +139,9 @@ export async function initSettings() {
 
     const merged = { ...(await getSettings()), ...settings };
     await saveSettings(merged);
+    setLang(settings.language);
+    emit('language-changed', settings.language);
+    invoke('set_tray_menu_language', { lang: settings.language }).catch(() => {});
     applyStyles(settings);
     await applyMcpSettings(settings);
     emit('theme-changed', settings.theme);

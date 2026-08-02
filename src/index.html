@@ -9,38 +9,38 @@
 <body>
   <div id="titlebar">
     <div class="titlebar-drag" data-tauri-drag-region>
-      <span class="titlebar-title">Zcom调试助手</span>
-      <button id="btn-mcp" class="mcp-btn" title="MCP 服务控制">
+      <span class="titlebar-title" data-i18n="app.title">Zcom调试助手</span>
+      <button id="btn-mcp" class="mcp-btn" title="MCP 服务控制" data-i18n-title="titlebar.mcpControl">
         <span class="mcp-dot">●</span>
         <span class="mcp-label">MCP</span>
       </button>
-      <button id="btn-multi" class="mcp-btn" title="多字符串发送">M-Str</button>
+      <button id="btn-multi" class="mcp-btn" title="多字符串发送" data-i18n-title="titlebar.multiString">M-Str</button>
     </div>
     <div class="titlebar-controls">
-      <button id="btn-pin" class="title-btn" title="窗口置顶"><i data-lucide="pin"></i></button>
-      <button id="btn-minimize" class="title-btn" title="最小化"><i data-lucide="minus"></i></button>
-      <button id="btn-maximize" class="title-btn" title="最大化"><i data-lucide="maximize-2"></i></button>
-      <button id="btn-close" class="title-btn" title="关闭"><i data-lucide="x"></i></button>
+      <button id="btn-pin" class="title-btn" title="窗口置顶" data-i18n-title="titlebar.pin"><i data-lucide="pin"></i></button>
+      <button id="btn-minimize" class="title-btn" title="最小化" data-i18n-title="titlebar.minimize"><i data-lucide="minus"></i></button>
+      <button id="btn-maximize" class="title-btn" title="最大化" data-i18n-title="titlebar.maximize"><i data-lucide="maximize-2"></i></button>
+      <button id="btn-close" class="title-btn" title="关闭" data-i18n-title="common.close"><i data-lucide="x"></i></button>
     </div>
   </div>
 
   <div id="menu-bar">
     <div class="menu-left">
       <div class="mode-switch">
-        <button class="mode-btn active" data-mode="standard">调试</button>
-        <button class="mode-btn" data-mode="terminal">终端</button>
+        <button class="mode-btn active" data-mode="standard" data-i18n="menu.debug">调试</button>
+        <button class="mode-btn" data-mode="terminal" data-i18n="menu.terminal">终端</button>
       </div>
-      <button id="btn-settings" class="menu-btn">设置</button>
+      <button id="btn-settings" class="menu-btn" data-i18n="menu.settings">设置</button>
       <div id="view-menu-wrap" class="view-menu">
-        <button id="btn-view" class="menu-btn">视图</button>
+        <button id="btn-view" class="menu-btn" data-i18n="menu.view">视图</button>
         <div id="view-dropdown" class="view-dropdown"></div>
       </div>
       <div id="help-menu-wrap" class="view-menu">
-        <button id="btn-help" class="menu-btn">帮助</button>
+        <button id="btn-help" class="menu-btn" data-i18n="menu.help">帮助</button>
         <div id="help-dropdown" class="view-dropdown">
-          <div class="view-item" data-help-action="mcp">MCP 服务</div>
-          <div class="view-item" data-help-action="devtools">开发者工具</div>
-          <div class="view-item" data-help-action="about">关于</div>
+          <div class="view-item" data-help-action="mcp" data-i18n="menu.mcpService">MCP 服务</div>
+          <div class="view-item" data-help-action="devtools" data-i18n="menu.devtools">开发者工具</div>
+          <div class="view-item" data-help-action="about" data-i18n="menu.about">关于</div>
         </div>
       </div>
     </div>
@@ -52,7 +52,7 @@
         </div>
         <div class="cs-dropdown" id="com-select-dropdown"></div>
       </div>
-      <button id="btn-serial-settings" class="small-btn" title="串口详细设置"><i data-lucide="settings"></i></button>
+      <button id="btn-serial-settings" class="small-btn" title="串口详细设置" data-i18n-title="serialSettings.title"><i data-lucide="settings"></i></button>
       <div id="baud-select" class="custom-select baud-select" tabindex="0">
         <div class="cs-trigger">
           <span class="cs-text" id="baud-select-text">115200</span>
@@ -60,9 +60,9 @@
         </div>
         <div class="cs-dropdown" id="baud-select-dropdown"></div>
       </div>
-      <button id="btn-refresh-ports" class="small-btn" title="刷新串口"><i data-lucide="refresh-cw"></i></button>
-      <button id="btn-toggle-port" class="small-btn" disabled>打开</button>
-      <span id="port-status" class="port-status" title="未连接"></span>
+      <button id="btn-refresh-ports" class="small-btn" title="刷新串口" data-i18n-title="menu.refreshPorts"><i data-lucide="refresh-cw"></i></button>
+      <button id="btn-toggle-port" class="small-btn" disabled data-i18n="common.open">打开</button>
+      <span id="port-status" class="port-status" title="未连接" data-i18n-title="common.disconnected"></span>
     </div>
   </div>
 
@@ -74,31 +74,31 @@
 
     <div id="send-drag-handle"></div>
     <div id="send-area" class="bottom-row">
-      <button id="btn-clear-receive" class="small-btn"><i data-lucide="trash-2"></i> 清空</button>
-      <textarea id="send-text" class="send-textarea" placeholder="输入要发送的数据..."></textarea>
-      <button id="btn-send" class="send-btn" disabled>发送</button>
+      <button id="btn-clear-receive" class="small-btn"><i data-lucide="trash-2"></i> <span data-i18n="receive.clear">清空</span></button>
+      <textarea id="send-text" class="send-textarea" placeholder="输入要发送的数据..." data-i18n-placeholder="receive.sendPlaceholder"></textarea>
+      <button id="btn-send" class="send-btn" disabled><span data-i18n="receive.send">发送</span></button>
     </div>
 
     <div id="filter-bar" data-view-group="filter">
       <span class="filter-icon"><i data-lucide="search"></i></span>
-      <input type="text" id="filter-input" class="filter-input" placeholder="过滤..." spellcheck="false" />
-      <button id="filter-btn-case" class="filter-btn" title="大小写敏感">Aa</button>
-      <button id="filter-btn-regex" class="filter-btn" title="正则模式">.*</button>
-      <button id="filter-btn-clear" class="filter-btn" title="清除过滤"><i data-lucide="x"></i></button>
+      <input type="text" id="filter-input" class="filter-input" placeholder="过滤..." spellcheck="false" data-i18n-placeholder="filter.placeholder" />
+      <button id="filter-btn-case" class="filter-btn" title="大小写敏感" data-i18n-title="filter.caseSensitive">Aa</button>
+      <button id="filter-btn-regex" class="filter-btn" title="正则模式" data-i18n-title="filter.regex">.*</button>
+      <button id="filter-btn-clear" class="filter-btn" title="清除过滤" data-i18n-title="filter.clear"><i data-lucide="x"></i></button>
     </div>
 
     <div id="file-ops" class="bottom-row" data-view-group="file">
-      <button id="btn-file-open" class="small-btn"><i data-lucide="folder-open"></i> 打开文件</button>
+      <button id="btn-file-open" class="small-btn"><i data-lucide="folder-open"></i> <span data-i18n="file.open">打开文件</span></button>
       <div class="file-path-wrap">
-        <input id="file-path" class="file-path-input" placeholder="未选择文件" />
+        <input id="file-path" class="file-path-input" placeholder="未选择文件" data-i18n-placeholder="file.noFile" />
         <span id="file-stat" class="file-stat hidden"></span>
       </div>
-      <button id="btn-file-send" class="small-btn" disabled><i data-lucide="upload"></i> 发送文件</button>
-      <button id="btn-file-save" class="small-btn"><i data-lucide="save"></i> 保存接收</button>
+      <button id="btn-file-send" class="small-btn" disabled><i data-lucide="upload"></i> <span data-i18n="file.send">发送文件</span></button>
+      <button id="btn-file-save" class="small-btn"><i data-lucide="save"></i> <span data-i18n="file.save">保存接收</span></button>
     </div>
     <div id="checksum-area" class="bottom-row" data-view-group="checksum">
       <label class="chk-label">
-        <input type="checkbox" id="chk-checksum" /> 加校验
+        <input type="checkbox" id="chk-checksum" /> <span data-i18n="checksum.enable">加校验</span>
       </label>
       <select id="checksum-type" class="small-select" disabled>
         <option value="crc16">CRC16-Modbus</option>
@@ -110,9 +110,9 @@
         <button class="segmented-btn active" value="msb">MSB</button>
         <button class="segmented-btn" value="lsb">LSB</button>
       </div>
-      <span class="label" title="正数从开头算起（+0 = 第 1 字节前），负数从末尾算起（-1 = 最后 1 字节后）">位置:</span>
+      <span class="label" title="正数从开头算起（+0 = 第 1 字节前），负数从末尾算起（-1 = 最后 1 字节后）" data-i18n="checksum.position" data-i18n-title="checksum.positionTitle">位置:</span>
       <input type="text" id="checksum-pos" class="small-input" value="+0" disabled />
-      <span class="label">校验码:</span>
+      <span class="label" data-i18n="checksum.checksum">校验码:</span>
       <span id="checksum-result" class="checksum-value">—</span>
     </div>
   </div>
@@ -120,12 +120,12 @@
   <div id="status-bar">
     <div class="status-group">
       <span id="status-hide-terminal">
-        <label class="chk-label"><input type="checkbox" id="chk-hex-send" /> Hex发送</label>
-        <label class="chk-label"><input type="checkbox" id="chk-hex-display" /> Hex显示</label>
-        <label class="chk-label"><input type="checkbox" id="chk-timestamp" checked /> 时间戳</label>
-        <label class="chk-label"><input type="checkbox" id="chk-fold-repeat" /> 折叠</label>
+        <label class="chk-label"><input type="checkbox" id="chk-hex-send" /> <span data-i18n="statusbar.hexSend">Hex发送</span></label>
+        <label class="chk-label"><input type="checkbox" id="chk-hex-display" /> <span data-i18n="statusbar.hexDisplay">Hex显示</span></label>
+        <label class="chk-label"><input type="checkbox" id="chk-timestamp" checked /> <span data-i18n="statusbar.timestamp">时间戳</span></label>
+        <label class="chk-label"><input type="checkbox" id="chk-fold-repeat" /> <span data-i18n="statusbar.fold">折叠</span></label>
       </span>
-      <select id="encoding-select" class="small-select" title="编码">
+      <select id="encoding-select" class="small-select" title="编码" data-i18n-title="statusbar.encoding">
         <option value="utf-8">UTF-8</option>
         <option value="gbk">GBK</option>
       </select>
@@ -136,32 +136,39 @@
       <span id="stat-sel" class="stat-sel hidden"></span>
     </div>
     <div class="status-group" id="port-info">
-      <span>未连接</span>
+      <span data-i18n="common.disconnected">未连接</span>
     </div>
   </div>
 
   <div id="settings-overlay" class="overlay hidden">
     <div id="settings-dialog" class="dialog">
       <div class="dialog-titlebar">
-        <span>系统设置</span>
+        <span data-i18n="settings.title">系统设置</span>
         <button class="dialog-close title-btn"><i data-lucide="x"></i></button>
       </div>
       <div class="dialog-body">
         <div class="setting-row">
-          <label>界面配色:</label>
+          <label data-i18n="settings.language">界面语言:</label>
+          <select id="setting-language" class="small-select">
+            <option value="zh-CN">简体中文</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <label data-i18n="settings.theme">界面配色:</label>
           <div class="segmented" data-setting="theme">
-            <button class="segmented-btn active" data-value="dark">深色</button>
-            <button class="segmented-btn" data-value="light">浅色</button>
-            <button class="segmented-btn" data-value="system">系统</button>
-            <button class="segmented-btn" data-value="high-contrast">高对比</button>
+            <button class="segmented-btn active" data-value="dark" data-i18n="settings.dark">深色</button>
+            <button class="segmented-btn" data-value="light" data-i18n="settings.light">浅色</button>
+            <button class="segmented-btn" data-value="system" data-i18n="settings.system">系统</button>
+            <button class="segmented-btn" data-value="high-contrast" data-i18n="settings.highContrast">高对比</button>
           </div>
         </div>
         <div class="setting-row">
-          <label>界面字号:</label>
+          <label data-i18n="settings.fontSize">界面字号:</label>
           <input type="number" id="setting-font-size" value="14" min="10" max="24" class="small-input" />
         </div>
         <div class="setting-row">
-          <label>接收区字体:</label>
+          <label data-i18n="settings.receiveFont">接收区字体:</label>
           <select id="setting-receive-font" class="small-select">
             <option value="Consolas">Consolas</option>
             <option value="Courier New">Courier New</option>
@@ -170,73 +177,73 @@
           </select>
         </div>
         <div class="setting-row">
-          <label>接收区字号:</label>
+          <label data-i18n="settings.receiveSize">接收区字号:</label>
           <input type="number" id="setting-receive-size" value="14" min="8" max="48" class="small-input" />
         </div>
         <div class="setting-row">
-          <label>接收区颜色:</label>
+          <label data-i18n="settings.receiveColor">接收区颜色:</label>
           <input type="color" id="setting-receive-color" value="#00ff00" />
         </div>
         <div class="setting-row">
-          <label>背景色:</label>
+          <label data-i18n="settings.bgColor">背景色:</label>
           <input type="color" id="setting-bg-color" value="#1a1a2e" />
         </div>
         <div class="setting-row">
-          <label>发送区换行:</label>
+          <label data-i18n="settings.sendNewline">发送区换行:</label>
           <div class="segmented" data-setting="sendNewline">
-            <button class="segmented-btn active" data-value="raw">原始</button>
+            <button class="segmented-btn active" data-value="raw" data-i18n="settings.raw">原始</button>
             <button class="segmented-btn" data-value="lf">LF</button>
             <button class="segmented-btn" data-value="cr">CR</button>
             <button class="segmented-btn" data-value="crlf">CR+LF</button>
           </div>
         </div>
         <div class="setting-row">
-          <label>发送时附加:</label>
+          <label data-i18n="settings.lineEnding">发送时附加:</label>
           <div class="segmented" data-setting="lineEnding">
-            <button class="segmented-btn" data-value="none">无</button>
+            <button class="segmented-btn" data-value="none" data-i18n="settings.none">无</button>
             <button class="segmented-btn" data-value="cr">CR</button>
             <button class="segmented-btn" data-value="lf">LF</button>
             <button class="segmented-btn active" data-value="crlf">CR+LF</button>
           </div>
         </div>
         <div class="setting-row">
-          <label>发送分包间隔:</label>
+          <label data-i18n="settings.chunkInterval">发送分包间隔:</label>
           <input type="number" id="setting-chunk-interval" value="10" min="-1" max="10000" class="small-input" style="width:60px" />
-          <span class="label" style="margin:0 4px">ms</span>
-          <span class="label" style="margin:0 4px">每</span>
+          <span class="label" style="margin:0 4px" data-i18n="settings.ms">ms</span>
+          <span class="label" style="margin:0 4px" data-i18n="settings.every">每</span>
           <input type="number" id="setting-chunk-size" value="1024" min="1" max="65536" class="small-input" style="width:70px" />
-          <span class="label" style="margin:0 4px">字节</span>
+          <span class="label" style="margin:0 4px" data-i18n="settings.bytes">字节</span>
         </div>
         <div class="setting-row">
-          <label>接收换行策略:</label>
+          <label data-i18n="settings.receiveNewline">接收换行策略:</label>
           <div class="segmented" data-setting="receiveNewline">
-            <button class="segmented-btn active" data-value="auto">自动拆分</button>
-            <button class="segmented-btn" data-value="chunks">原始分块</button>
-            <button class="segmented-btn" data-value="stream">连续流</button>
+            <button class="segmented-btn active" data-value="auto" data-i18n="settings.auto">自动拆分</button>
+            <button class="segmented-btn" data-value="chunks" data-i18n="settings.chunks">原始分块</button>
+            <button class="segmented-btn" data-value="stream" data-i18n="settings.stream">连续流</button>
           </div>
         </div>
         <div class="setting-row">
-          <label>重复折叠阈值:</label>
+          <label data-i18n="settings.foldCount">重复折叠阈值:</label>
           <input type="number" id="setting-fold-count" value="5" min="2" max="100" class="small-input" />
         </div>
         <div class="setting-row">
-          <label>关闭行为:</label>
+          <label data-i18n="settings.closeBehavior">关闭行为:</label>
           <div class="segmented" data-setting="closeBehavior">
-            <button class="segmented-btn" data-value="minimize">隐藏到托盘</button>
-            <button class="segmented-btn active" data-value="ask">询问</button>
-            <button class="segmented-btn" data-value="close">关闭</button>
+            <button class="segmented-btn" data-value="minimize" data-i18n="settings.hideToTray">隐藏到托盘</button>
+            <button class="segmented-btn active" data-value="ask" data-i18n="settings.ask">询问</button>
+            <button class="segmented-btn" data-value="close" data-i18n="common.close">关闭</button>
           </div>
         </div>
         <div class="setting-row">
-          <label>MCP 服务:</label>
-          <label class="chk-label"><input type="checkbox" id="setting-mcp-enabled" /> 启用</label>
-          <span class="label" style="margin-left:12px">端口:</span>
+          <label data-i18n="settings.mcp">MCP 服务:</label>
+          <label class="chk-label"><input type="checkbox" id="setting-mcp-enabled" /> <span data-i18n="settings.enable">启用</span></label>
+          <span class="label" style="margin-left:12px" data-i18n="settings.port">端口:</span>
           <input type="number" id="setting-mcp-port" value="9876" min="1024" max="65535" class="small-input" style="width:80px" />
         </div>
       </div>
       <div class="dialog-footer">
-        <button id="setting-apply" class="small-btn primary">应用</button>
-        <button id="setting-close" class="small-btn">关闭</button>
+        <button id="setting-apply" class="small-btn primary" data-i18n="common.apply">应用</button>
+        <button id="setting-close" class="small-btn" data-i18n="common.close">关闭</button>
       </div>
     </div>
   </div>
@@ -244,12 +251,12 @@
   <div id="serial-settings-overlay" class="overlay hidden">
     <div id="serial-settings-dialog" class="dialog" style="width:380px;">
       <div class="dialog-titlebar">
-        <span>串口详细设置</span>
+        <span data-i18n="serialSettings.title">串口详细设置</span>
         <button class="dialog-close title-btn" id="btn-serial-settings-close"><i data-lucide="x"></i></button>
       </div>
       <div class="dialog-body">
         <div class="setting-row">
-          <label>数据位:</label>
+          <label data-i18n="serialSettings.dataBits">数据位:</label>
           <div class="segmented" id="ss-char-size">
             <button class="segmented-btn" data-value="5">5</button>
             <button class="segmented-btn" data-value="6">6</button>
@@ -258,14 +265,14 @@
           </div>
         </div>
         <div class="setting-row">
-          <label>停止位:</label>
+          <label data-i18n="serialSettings.stopBits">停止位:</label>
           <div class="segmented" id="ss-stop-bits">
             <button class="segmented-btn active" data-value="1">1</button>
             <button class="segmented-btn" data-value="2">2</button>
           </div>
         </div>
         <div class="setting-row">
-          <label>校验位:</label>
+          <label data-i18n="serialSettings.parity">校验位:</label>
           <div class="segmented" id="ss-parity">
             <button class="segmented-btn active" data-value="none">None</button>
             <button class="segmented-btn" data-value="odd">Odd</button>
@@ -275,7 +282,7 @@
           </div>
         </div>
         <div class="setting-row">
-          <label>流控制:</label>
+          <label data-i18n="serialSettings.flowControl">流控制:</label>
           <div class="segmented" id="ss-flow-control">
             <button class="segmented-btn active" data-value="none">None</button>
             <button class="segmented-btn" data-value="hardware">Hardware</button>
@@ -284,10 +291,10 @@
         </div>
       </div>
       <div class="dialog-footer">
-        <button id="btn-ss-restore" class="small-btn">恢复默认</button>
+        <button id="btn-ss-restore" class="small-btn" data-i18n="common.restoreDefault">恢复默认</button>
         <div style="flex:1"></div>
-        <button id="btn-ss-cancel" class="small-btn">取消</button>
-        <button id="btn-ss-ok" class="small-btn primary">确定</button>
+        <button id="btn-ss-cancel" class="small-btn" data-i18n="common.cancel">取消</button>
+        <button id="btn-ss-ok" class="small-btn primary" data-i18n="common.ok">确定</button>
       </div>
     </div>
   </div>
@@ -302,9 +309,9 @@
         <textarea id="mcp-prompt-text" readonly style="width:100%;height:340px;resize:none;font-family:var(--receive-font);font-size:12px;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:4px;padding:10px;white-space:pre;tab-size:2"></textarea>
       </div>
       <div class="dialog-footer">
-        <button id="btn-mcp-prompt-copy" class="small-btn primary">复制到剪贴板</button>
+        <button id="btn-mcp-prompt-copy" class="small-btn primary" data-i18n="mcpDialog.copy">复制到剪贴板</button>
         <div style="flex:1"></div>
-        <button id="btn-mcp-prompt-close2" class="small-btn">关闭</button>
+        <button id="btn-mcp-prompt-close2" class="small-btn" data-i18n="common.close">关闭</button>
       </div>
     </div>
   </div>

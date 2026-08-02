@@ -27,6 +27,44 @@ fn set_window_title(app: tauri::AppHandle, title: String) -> Result<(), String> 
         .map_err(|e| e.to_string())
 }
 
+fn tray_labels(lang: &str) -> (&'static str, &'static str) {
+    if lang.starts_with("en") {
+        ("Show Main Window", "Quit")
+    } else {
+        ("显示主窗口", "退出")
+    }
+}
+
+fn rebuild_tray_menu(app: &tauri::AppHandle) -> Result<(), String> {
+    let locale = app.state::<state::LocaleState>();
+    let lang = locale.0.lock().map_err(|e| e.to_string())?;
+    let (show_text, quit_text) = tray_labels(&lang);
+    let show_item = MenuItemBuilder::with_id("show", show_text)
+        .build(app)
+        .map_err(|e| e.to_string())?;
+    let quit_item = MenuItemBuilder::with_id("quit", quit_text)
+        .build(app)
+        .map_err(|e| e.to_string())?;
+    let menu = MenuBuilder::new(app)
+        .item(&show_item)
+        .item(&quit_item)
+        .build()
+        .map_err(|e| e.to_string())?;
+    if let Some(tray) = app.tray_by_id("main") {
+        tray.set_menu(Some(menu)).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn set_tray_menu_language(app: tauri::AppHandle, lang: String) -> Result<(), String> {
+    let locale = app.state::<state::LocaleState>();
+    let mut current = locale.0.lock().map_err(|e| e.to_string())?;
+    *current = lang;
+    drop(current);
+    rebuild_tray_menu(&app)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     env_logger::init();
@@ -39,6 +77,7 @@ pub fn run() {
         .manage(SerialState::new())
         .manage(ReceiveBuffer::new())
         .manage(McpServerHandle::new())
+        .manage(state::LocaleState::default())
         .invoke_handler(tauri::generate_handler![
             serial_cmd::list_ports,
             serial_cmd::open_port,
@@ -61,6 +100,7 @@ pub fn run() {
             receive_buffer::mcp_clear_buffer,
             open_devtools,
             set_window_title,
+            set_tray_menu_language,
         ])
         .setup(|app| {
             let show_item = MenuItemBuilder::with_id("show", "显示主窗口")

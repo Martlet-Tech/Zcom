@@ -6,6 +6,7 @@ import { writeTextFile, readTextFile } from '@tauri-apps/plugin-fs';
 import { parseHexString, getSettings } from './utils.js';
 import { initIcons, createElement, GripVertical, X } from './icons.js';
 import { Keybindings } from './keybindings.js';
+import { t, setLang, applyI18n, detectLang } from './i18n.js';
 
 let items = [];
 let loopActive = false;
@@ -18,6 +19,15 @@ export async function initMulti() {
   initIcons();
 
   const s = await getSettings();
+  setLang(s.language || detectLang());
+  applyI18n();
+  win.setTitle(t('multi.title'));
+  listen('language-changed', (e) => {
+    setLang(e.payload);
+    applyI18n();
+    win.setTitle(t('multi.title'));
+    renderAll();
+  });
   applyThemeClass(s.theme || 'dark');
   if (s.theme === 'system') {
     const mq = window.matchMedia('(prefers-color-scheme: light)');
@@ -98,18 +108,18 @@ function renderItem(item) {
     <span class="drag-handle"></span>
     <button class="item-del-btn"></button>
     <div class="item-text-wrap" data-item-id="${item.id}">
-      <span class="item-text-data${item.text ? '' : ' placeholder'}">${escapeHtml(item.text || '点击输入')}</span>
-      <span class="item-text-name${item.name ? '' : ' placeholder'}">${escapeHtml(item.name || '点击命名')}</span>
-      <input type="text" class="item-text-input" placeholder="输入发送内容" />
-      <input type="text" class="item-text-name-input" placeholder="输入备注名称..." />
+      <span class="item-text-data${item.text ? '' : ' placeholder'}">${escapeHtml(item.text || t('multi.clickToInput'))}</span>
+      <span class="item-text-name${item.name ? '' : ' placeholder'}">${escapeHtml(item.name || t('multi.clickToName'))}</span>
+      <input type="text" class="item-text-input" placeholder="${t('multi.inputContent')}" />
+      <input type="text" class="item-text-name-input" placeholder="${t('multi.inputName')}" />
     </div>
-    <span class="item-label">延迟:</span>
+    <span class="item-label">${t('multi.delay')}</span>
     <input type="number" class="item-delay" value="${item.delay}" min="0" max="60000" />
     <span class="item-label">ms</span>
     <label class="chk-label">
       <input type="checkbox" class="item-hex-chk" ${item.hex ? 'checked' : ''} /> Hex
     </label>
-    <button class="item-send-btn">发送</button>
+    <button class="item-send-btn">${t('multi.send')}</button>
   `;
 
   const handle = div.querySelector('.drag-handle');
@@ -172,7 +182,7 @@ function renderItem(item) {
 
 function saveDataEdit(item, dataSpan, dataInput, wrap) {
   item.text = dataInput.value;
-  dataSpan.textContent = item.text || '点击输入';
+  dataSpan.textContent = item.text || t('multi.clickToInput');
   dataSpan.classList.toggle('placeholder', !item.text);
   wrap.classList.remove('edit-data');
   saveItems();
@@ -180,7 +190,7 @@ function saveDataEdit(item, dataSpan, dataInput, wrap) {
 
 function saveNameEdit(item, nameSpan, nameInput, wrap) {
   item.name = nameInput.value;
-  nameSpan.textContent = item.name || '点击命名';
+  nameSpan.textContent = item.name || t('multi.clickToName');
   nameSpan.classList.toggle('placeholder', !item.name);
   wrap.classList.remove('edit-name');
   saveItems();
