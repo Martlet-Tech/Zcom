@@ -14,9 +14,9 @@ describe('FrameLayout — SSCOM line-breaking rules', () => {
   it('text with timestamp starts a new line per chunk', () => {
     const l = new FrameLayout();
     expect(l.push('help', { timestamp: true, ts: TS }))
-      .toEqual([{ type: 'line', text: `${TS} help` }]);
+      .toEqual([{ type: 'line', text: `${TS}help` }]);
     expect(l.push('help', { timestamp: true, ts: TS }))
-      .toEqual([{ type: 'line', text: `${TS} help` }]);
+      .toEqual([{ type: 'line', text: `${TS}help` }]);
     expect(l.open).toBe(false);
   });
 
@@ -39,7 +39,7 @@ describe('FrameLayout — SSCOM line-breaking rules', () => {
     const l = new FrameLayout();
     expect(l.push('help\n', { timestamp: true, ts: TS }))
       .toEqual([
-        { type: 'line', text: `${TS} help` },
+        { type: 'line', text: `${TS}help` },
         { type: 'line', text: '' },
       ]);
     expect(l.open).toBe(false);
@@ -85,7 +85,7 @@ describe('FrameLayout — SSCOM line-breaking rules', () => {
   it('timestamp with internal newlines splits, timestamp only on first part', () => {
     const l = new FrameLayout();
     expect(l.push('a\nb\n', { timestamp: true, ts: TS })).toEqual([
-      { type: 'line', text: `${TS} a` },
+      { type: 'line', text: `${TS}a` },
       { type: 'line', text: 'b' },
       { type: 'line', text: '' },
     ]);

@@ -13,6 +13,8 @@ let autoScroll = true;
 let hexDisplay = false;
 let showTimestamp = true;
 let encoding = 'utf-8';
+let echoEnabled = true;
+let echoPrefix = true;
 let receiveContent = null;
 let receiveArea = null;
 const MAX_LINES = 10000;
@@ -60,7 +62,7 @@ function matchesFilter(text) {
 }
 
 function stripTimestamp(text) {
-  return text.replace(/^\[\w-\d{2}:\d{2}:\d{2}\.\d{3}\]\s*/, '');
+  return text.replace(/^\[[RT]-?(?:\d{2}:\d{2}:\d{2}\.\d{3})?\]/, '');
 }
 
 function applyFilter() {
@@ -462,7 +464,10 @@ export async function appendData(bytes, direction) {
 }
 
 function appendSentText(text) {
-  if (showTimestamp) text = `[T-${timestamp()}] ${text}`;
+  if (!echoEnabled) return;
+  if (echoPrefix) {
+    text = showTimestamp ? `[T-${timestamp()}]${text}` : `[T]${text}`;
+  }
   appendLine(text);
 }
 
@@ -477,6 +482,8 @@ export async function initReceive() {
   hexDisplay = s.hexDisplay;
   showTimestamp = s.showTimestamp;
   encoding = s.encoding || 'utf-8';
+  echoEnabled = s.echoEnabled !== false;
+  echoPrefix = s.echoPrefix !== false;
 
   const receiveZoom = new ReceiveZoom(receiveArea, receiveContent);
 
@@ -507,6 +514,15 @@ export async function initReceive() {
 
   document.addEventListener('encoding-change', (e) => {
     encoding = e.detail.encoding;
+  });
+
+  document.addEventListener('settings-applied', (e) => {
+    echoEnabled = e.detail.echoEnabled !== false;
+    echoPrefix = e.detail.echoPrefix !== false;
+  });
+
+  document.addEventListener('echo-enabled-change', (e) => {
+    echoEnabled = e.detail.on;
   });
 
   foldEnabled = document.getElementById('chk-fold-repeat').checked;

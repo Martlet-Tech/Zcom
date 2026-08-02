@@ -18,7 +18,7 @@ export class FrameLayout {
     const end = trailingNL ? parts.length - 1 : parts.length;
 
     if (timestamp) {
-      actions.push({ type: 'line', text: ts ? `${ts} ${parts[0]}` : parts[0] });
+      actions.push({ type: 'line', text: ts ? `${ts}${parts[0]}` : parts[0] });
       for (let i = 1; i < end; i++) {
         actions.push({ type: 'line', text: parts[i] });
       }

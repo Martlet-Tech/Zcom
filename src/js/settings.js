@@ -62,6 +62,10 @@ async function loadDialogValues() {
   if (autoReconnect) autoReconnect.checked = ss.autoReconnect !== false;
   const reconnectInterval = document.getElementById('setting-reconnect-interval');
   if (reconnectInterval) reconnectInterval.value = ss.reconnectInterval || 1000;
+  const echoEnabled = document.getElementById('setting-echo-enabled');
+  if (echoEnabled) echoEnabled.checked = ss.echoEnabled !== false;
+  const echoPrefix = document.getElementById('setting-echo-prefix');
+  if (echoPrefix) echoPrefix.checked = ss.echoPrefix !== false;
 }
 
 function applyStyles(s) {
@@ -136,6 +140,8 @@ export async function initSettings() {
       mcpPort: parseInt(document.getElementById('setting-mcp-port')?.value) || 9876,
       autoReconnect: document.getElementById('setting-auto-reconnect')?.checked ?? true,
       reconnectInterval: parseInt(document.getElementById('setting-reconnect-interval')?.value) || 1000,
+      echoEnabled: document.getElementById('setting-echo-enabled')?.checked ?? true,
+      echoPrefix: document.getElementById('setting-echo-prefix')?.checked ?? true,
     };
 
     const merged = { ...(await getSettings()), ...settings };

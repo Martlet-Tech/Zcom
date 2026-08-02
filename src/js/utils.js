@@ -28,6 +28,8 @@ const defaults = {
   sendNewline: 'raw',
   sendChunkInterval: 10,
   sendChunkSize: 1024,
+  echoEnabled: true,
+  echoPrefix: true,
   mode: 'standard',
   foldRepeatCount: 5,
   sendAreaHeight: 80,

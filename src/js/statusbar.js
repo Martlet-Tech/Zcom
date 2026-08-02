@@ -9,6 +9,7 @@ export async function initStatusBar() {
   const chkHexSend = document.getElementById('chk-hex-send');
   const chkHexDisplay = document.getElementById('chk-hex-display');
   const chkTimestamp = document.getElementById('chk-timestamp');
+  const chkEcho = document.getElementById('chk-echo');
   const encSelect = document.getElementById('encoding-select');
   const statTx = document.getElementById('stat-tx');
   const statRx = document.getElementById('stat-rx');
@@ -28,6 +29,7 @@ export async function initStatusBar() {
   chkHexDisplay.checked = saved.hexDisplay;
   chkTimestamp.checked = saved.showTimestamp;
   chkHexSend.checked = saved.hexSend;
+  chkEcho.checked = saved.echoEnabled !== false;
   encSelect.value = saved.encoding || 'utf-8';
 
   chkHexSend.addEventListener('change', async () => {
@@ -43,6 +45,11 @@ export async function initStatusBar() {
   chkTimestamp.addEventListener('change', async () => {
     await patchSettings({ showTimestamp: chkTimestamp.checked });
     document.dispatchEvent(new CustomEvent('timestamp-change', { detail: { on: chkTimestamp.checked } }));
+  });
+
+  chkEcho.addEventListener('change', async () => {
+    await patchSettings({ echoEnabled: chkEcho.checked });
+    document.dispatchEvent(new CustomEvent('echo-enabled-change', { detail: { on: chkEcho.checked } }));
   });
 
   encSelect.addEventListener('change', async () => {

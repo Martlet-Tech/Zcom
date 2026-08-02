@@ -124,6 +124,7 @@
         <label class="chk-label"><input type="checkbox" id="chk-hex-send" /> <span data-i18n="statusbar.hexSend">Hex发送</span></label>
         <label class="chk-label"><input type="checkbox" id="chk-hex-display" /> <span data-i18n="statusbar.hexDisplay">Hex显示</span></label>
         <label class="chk-label"><input type="checkbox" id="chk-timestamp" checked /> <span data-i18n="statusbar.timestamp">时间戳</span></label>
+        <label class="chk-label"><input type="checkbox" id="chk-echo" /> <span data-i18n="statusbar.echo">回显</span></label>
         <label class="chk-label"><input type="checkbox" id="chk-fold-repeat" /> <span data-i18n="statusbar.fold">折叠</span></label>
       </span>
       <select id="encoding-select" class="small-select" title="编码" data-i18n-title="statusbar.encoding">
@@ -206,6 +207,11 @@
             <button class="segmented-btn" data-value="lf">LF</button>
             <button class="segmented-btn active" data-value="crlf">CR+LF</button>
           </div>
+        </div>
+        <div class="setting-row">
+          <label data-i18n="settings.echo">发送回显:</label>
+          <label class="chk-label"><input type="checkbox" id="setting-echo-enabled" /> <span data-i18n="settings.enable">启用</span></label>
+          <label class="chk-label" style="margin-left:12px"><input type="checkbox" id="setting-echo-prefix" /> <span data-i18n="settings.echoPrefix">带 R/T 前缀</span></label>
         </div>
         <div class="setting-row">
           <label data-i18n="settings.chunkInterval">发送分包间隔:</label>
