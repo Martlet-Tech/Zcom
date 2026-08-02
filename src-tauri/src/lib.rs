@@ -7,7 +7,9 @@ mod window_helper;
 mod encoding_utils;
 mod multi_string;
 mod net_cmd;
+mod esp_cmd;
 
+use esp_cmd::EspHandle;
 use state::{NetState, SerialState};
 use receive_buffer::ReceiveBuffer;
 use mcp_server::McpServerHandle;
@@ -80,6 +82,7 @@ pub fn run() {
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .manage(serial)
         .manage(net)
+        .manage(EspHandle::new())
         .manage(ReceiveBuffer::new())
         .manage(McpServerHandle::new())
         .manage(state::LocaleState::default())
@@ -99,6 +102,11 @@ pub fn run() {
             net_cmd::net_open,
             net_cmd::net_close,
             net_cmd::set_conn_mode,
+            esp_cmd::set_esp_config,
+            esp_cmd::esp_build_flash_start,
+            esp_cmd::esp_flash_cancel,
+            esp_cmd::esp_reset,
+            esp_cmd::detect_esp_paths,
             multi_string::open_multi_string_window,
             multi_string::load_multi_strings,
             multi_string::save_multi_strings,

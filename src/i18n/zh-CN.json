@@ -51,6 +51,7 @@
     "tcpServer": "TCP Server",
     "udpClient": "UDP Client",
     "udpServer": "UDP Server",
+    "idf": "IDF",
     "remoteIp": "对方IP",
     "remotePort": "对方端口",
     "localPort": "本地端口"
@@ -123,7 +124,21 @@
     "reconnectInterval": "间隔:",
     "mcp": "MCP 服务:",
     "enable": "启用",
-    "port": "端口:"
+    "port": "端口:",
+    "espIdf": "ESP-IDF 路径:",
+    "espPython": "Python 路径(可空):",
+    "espBaud": "烧录波特率:",
+    "espDetect": "自动探测"
+  },
+  "esp": {
+    "buildTitle": "ESP-IDF Build + Flash",
+    "flashMonitor": "Flash+Monitor",
+    "needConfig": "请先在系统设置里配置 ESP-IDF 路径",
+    "needPort": "请先选择串口",
+    "running": "烧录中...",
+    "cancelling": "正在取消...",
+    "done": "完成, 芯片已复位运行",
+    "failed": "失败: {stage}"
   },
   "serialSettings": {
     "title": "串口详细设置",

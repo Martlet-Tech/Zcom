@@ -13,13 +13,14 @@ let stopBits = 1;
 let parity = 'none';
 let flowControl = 'none';
 
-const MODE_MAP = { serial: 0, 'tcp-client': 1, 'tcp-server': 2, 'udp-client': 3, 'udp-server': 4 };
+const MODE_MAP = { serial: 0, 'tcp-client': 1, 'tcp-server': 2, 'udp-client': 3, 'udp-server': 4, idf: 5 };
 const CONN_TYPES = [
   { v: 'serial', key: 'conn.serial' },
   { v: 'tcp-client', key: 'conn.tcpClient' },
   { v: 'tcp-server', key: 'conn.tcpServer' },
   { v: 'udp-client', key: 'conn.udpClient' },
   { v: 'udp-server', key: 'conn.udpServer' },
+  { v: 'idf', key: 'conn.idf' },
 ];
 let connType = 'serial';
 let netRemoteHost = '';
@@ -167,7 +168,7 @@ export function initMenu() {
   }
 
   async function refresh() {
-    if (connType !== 'serial') return;
+    if (connType !== 'serial' && connType !== 'idf') return;
     try {
       const ports = await invoke('list_ports');
       const saved = await getSettings();
@@ -223,7 +224,7 @@ export function initMenu() {
   refresh();
 
   function canOpen() {
-    if (connType === 'serial') return !!currentPort;
+    if (connType === 'serial' || connType === 'idf') return !!currentPort;
     if (connType === 'tcp-client' || connType === 'udp-client') {
       return netRemoteHost.trim() !== '' && parseInt(netRemotePort) > 0;
     }
@@ -231,15 +232,16 @@ export function initMenu() {
   }
 
   function applyConnUI() {
-    const isSerial = connType === 'serial';
-    serialGroup.classList.toggle('hidden', !isSerial);
-    netGroup.classList.toggle('hidden', isSerial);
-    refreshBtn.style.display = isSerial ? '' : 'none';
+    const needsSerial = connType === 'serial' || connType === 'idf';
+    serialGroup.classList.toggle('hidden', !needsSerial);
+    netGroup.classList.toggle('hidden', needsSerial);
+    refreshBtn.style.display = needsSerial ? '' : 'none';
     const isClient = connType === 'tcp-client' || connType === 'udp-client';
     netIpEl.style.display = isClient ? '' : 'none';
     netRemotePortEl.style.display = isClient ? '' : 'none';
-    netLocalPortEl.style.display = isSerial || isClient ? 'none' : '';
+    netLocalPortEl.style.display = connType === 'serial' || connType === 'idf' || isClient ? 'none' : '';
     applyPortUI();
+    document.dispatchEvent(new CustomEvent('conn-type-changed', { detail: { type: connType } }));
   }
 
   function closeConnTypeDropdown() {
@@ -260,7 +262,7 @@ export function initMenu() {
     if (portFSM.state === PortState.CONNECTED || portFSM.state === PortState.RECONNECTING) {
       transition(PortEvent.CLOSE_START);
       try {
-        if (connType === 'serial') {
+        if (connType === 'serial' || connType === 'idf') {
           await invoke('close_port');
         } else {
           await invoke('net_close');
@@ -475,7 +477,7 @@ export function initMenu() {
     if (s === PortState.CONNECTED || s === PortState.RECONNECTING) {
       transition(PortEvent.CLOSE_START);
       try {
-        if (connType === 'serial') {
+        if (connType === 'serial' || connType === 'idf') {
           await invoke('close_port');
         } else {
           await invoke('net_close');
@@ -490,7 +492,7 @@ export function initMenu() {
       if (!canOpen()) return;
       transition(PortEvent.OPEN_START, { portName: connType });
       try {
-        if (connType === 'serial') {
+        if (connType === 'serial' || connType === 'idf') {
           await invoke('open_port', {
             path: currentPort,
             baud: baudRate,
@@ -589,7 +591,7 @@ export function initMenu() {
 
   document.addEventListener('port-closed', () => {
     transition(PortEvent.CLOSED);
-    if (connType === 'serial' && !comEl.classList.contains('open')) refresh();
+    if ((connType === 'serial' || connType === 'idf') && !comEl.classList.contains('open')) refresh();
   });
 }
 

@@ -33,6 +33,7 @@ impl McpServerHandle {
 struct AppState {
     buffer: ReceiveBuffer,
     serial: SerialState,
+    esp: crate::esp_cmd::EspHandle,
     app_handle: tauri::AppHandle,
 }
 
@@ -41,6 +42,7 @@ impl Clone for AppState {
         Self {
             buffer: self.buffer.clone(),
             serial: self.serial.clone(),
+            esp: self.esp.clone(),
             app_handle: self.app_handle.clone(),
         }
     }
@@ -180,6 +182,30 @@ async fn handle_tools_list(id: Value) -> (StatusCode, Json<Value>) {
                     "type": "object",
                     "properties": {}
                 }
+            },
+            {
+                "name": "esp_build_flash",
+                "description": "对 ESP-IDF 项目执行 build + flash(等同于主界面的火焰按钮),完成后芯片自动复位运行",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "project_dir": {
+                            "type": "string",
+                            "description": "ESP-IDF 项目根目录(含 CMakeLists.txt)"
+                        },
+                        "port": {
+                            "type": "string",
+                            "description": "串口, 缺省用当前选中的串口",
+                            "default": ""
+                        },
+                        "baud": {
+                            "type": "integer",
+                            "description": "烧录波特率, 缺省用设置里的值",
+                            "default": 0
+                        }
+                    },
+                    "required": ["project_dir"]
+                }
             }
         ]
     }));
@@ -256,6 +282,82 @@ async fn handle_tools_call(state: &AppState, body: &Value, id: Value) -> (Status
             }));
             (StatusCode::OK, Json(resp))
         }
+        "esp_build_flash" => {
+            let project_dir = args.get("project_dir")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let port = args.get("port")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let baud = args.get("baud").and_then(|v| v.as_u64()).map(|v| v as u32);
+
+            if project_dir.is_empty() {
+                let resp = jsonrpc_error(-32602, "project_dir cannot be empty");
+                return (StatusCode::BAD_REQUEST, Json(resp));
+            }
+
+            let cfg = {
+                let c = state.esp.config.lock().unwrap_or_else(|e| e.into_inner());
+                crate::esp_cmd::EspConfig {
+                    idf_path: c.idf_path.clone(),
+                    python_path: c.python_path.clone(),
+                    baud: baud.unwrap_or(c.baud),
+                }
+            };
+            if cfg.idf_path.trim().is_empty() {
+                let resp = jsonrpc_error(-32603, "ESP-IDF 路径未配置, 请先在系统设置里填写");
+                return (StatusCode::INTERNAL_SERVER_ERROR, Json(resp));
+            }
+
+            {
+                let mut busy = state.esp.busy.lock().unwrap_or_else(|e| e.into_inner());
+                if *busy {
+                    let resp = jsonrpc_error(-32603, "已有烧录任务在运行");
+                    return (StatusCode::INTERNAL_SERVER_ERROR, Json(resp));
+                }
+                *busy = true;
+            }
+
+            let esp = state.esp.clone();
+            let app_handle = state.app_handle.clone();
+            let serial_name = state
+                .serial
+                .port_name
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .clone()
+                .unwrap_or_default();
+            let port = if port.is_empty() { serial_name } else { port };
+            let result = tokio::task::spawn_blocking(move || {
+                let r = crate::esp_cmd::run_worker(&esp, &app_handle, &cfg, &project_dir, &port);
+                let mut busy = esp.busy.lock().unwrap_or_else(|e| e.into_inner());
+                *busy = false;
+                r
+            })
+            .await;
+
+            match result {
+                Ok(Ok(())) => {
+                    let resp = jsonrpc_success(id, json!({
+                        "content": [{
+                            "type": "text",
+                            "text": "build + flash 成功, 芯片已复位运行"
+                        }]
+                    }));
+                    (StatusCode::OK, Json(resp))
+                }
+                Ok(Err(e)) => {
+                    let resp = jsonrpc_error(-32603, &format!("烧录失败: {}", e));
+                    (StatusCode::INTERNAL_SERVER_ERROR, Json(resp))
+                }
+                Err(e) => {
+                    let resp = jsonrpc_error(-32603, &format!("任务异常: {}", e));
+                    (StatusCode::INTERNAL_SERVER_ERROR, Json(resp))
+                }
+            }
+        }
         _ => {
             let resp = jsonrpc_error(-32602, &format!("Tool not found: {}", tool_name));
             (StatusCode::NOT_FOUND, Json(resp))
@@ -296,6 +398,7 @@ pub async fn mcp_start(
     handle: tauri::State<'_, McpServerHandle>,
     buffer: tauri::State<'_, ReceiveBuffer>,
     serial: tauri::State<'_, SerialState>,
+    esp: tauri::State<'_, crate::esp_cmd::EspHandle>,
     port: u16,
 ) -> Result<(), String> {
     let mut running = handle.running.lock().await;
@@ -307,6 +410,7 @@ pub async fn mcp_start(
     let state = AppState {
         buffer: (*buffer).clone(),
         serial: (*serial).clone(),
+        esp: (*esp).clone(),
         app_handle: app_handle.clone(),
     };
 

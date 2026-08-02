@@ -260,6 +260,22 @@
           <span class="label" style="margin-left:12px" data-i18n="settings.port">端口:</span>
           <input type="number" id="setting-mcp-port" value="9876" min="1024" max="65535" class="small-input" style="width:80px" />
         </div>
+        <div class="setting-row">
+          <label data-i18n="settings.espIdf">ESP-IDF 路径:</label>
+          <input type="text" id="setting-esp-idf" class="file-path-input" list="esp-idf-datalist" spellcheck="false" placeholder="D:\...\esp-idf" />
+          <datalist id="esp-idf-datalist"></datalist>
+          <button id="btn-esp-detect" class="small-btn" data-i18n="settings.espDetect">自动探测</button>
+        </div>
+        <div class="setting-row">
+          <label data-i18n="settings.espPython">Python 路径(可空):</label>
+          <input type="text" id="setting-esp-python" class="file-path-input" list="esp-python-datalist" spellcheck="false" placeholder="...python_env\...\python.exe" />
+          <datalist id="esp-python-datalist"></datalist>
+        </div>
+        <div class="setting-row">
+          <label data-i18n="settings.espBaud">烧录波特率:</label>
+          <input type="number" id="setting-esp-baud" class="small-input" style="width:90px" value="921600" min="0" max="3000000" />
+          <span class="label" style="margin:0 4px" data-i18n="settings.ms">bps</span>
+        </div>
       </div>
       <div class="dialog-footer">
         <button id="setting-apply" class="small-btn primary" data-i18n="common.apply">应用</button>
@@ -332,6 +348,23 @@
         <button id="btn-mcp-prompt-copy" class="small-btn primary" data-i18n="mcpDialog.copy">复制到剪贴板</button>
         <div style="flex:1"></div>
         <button id="btn-mcp-prompt-close2" class="small-btn" data-i18n="common.close">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="esp-flash-overlay" class="overlay hidden">
+    <div id="esp-flash-dialog" class="dialog" style="width:640px;">
+      <div class="dialog-titlebar">
+        <span data-i18n="esp.buildTitle">ESP-IDF Build + Flash</span>
+        <button class="dialog-close title-btn" id="btn-esp-dialog-close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="dialog-body" style="padding:12px;">
+        <pre id="esp-log" class="esp-log"></pre>
+      </div>
+      <div class="dialog-footer">
+        <span id="esp-flash-status" class="label">—</span>
+        <div style="flex:1"></div>
+        <button id="btn-esp-cancel" class="small-btn" data-i18n="common.cancel">取消</button>
       </div>
     </div>
   </div>

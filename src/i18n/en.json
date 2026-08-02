@@ -51,6 +51,7 @@
     "tcpServer": "TCP Server",
     "udpClient": "UDP Client",
     "udpServer": "UDP Server",
+    "idf": "IDF",
     "remoteIp": "Remote IP",
     "remotePort": "Remote port",
     "localPort": "Local port"
@@ -123,7 +124,21 @@
     "reconnectInterval": "Interval:",
     "mcp": "MCP Service:",
     "enable": "Enable",
-    "port": "Port:"
+    "port": "Port:",
+    "espIdf": "ESP-IDF path:",
+    "espPython": "Python path (optional):",
+    "espBaud": "Flash baud rate:",
+    "espDetect": "Auto detect"
+  },
+  "esp": {
+    "buildTitle": "ESP-IDF Build + Flash",
+    "flashMonitor": "Flash+Monitor",
+    "needConfig": "Configure ESP-IDF path in Settings first",
+    "needPort": "Select a serial port first",
+    "running": "Flashing...",
+    "cancelling": "Cancelling...",
+    "done": "Done, chip reset & running",
+    "failed": "Failed: {stage}"
   },
   "serialSettings": {
     "title": "Serial Port Settings",

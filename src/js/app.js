@@ -81,6 +81,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.addEventListener('clear-receive', clearReceive);
   listen('clear-receive', clearReceive);
 
+  document.addEventListener('open-monitor', async () => {
+    const s = await getSettings();
+    setTerminalMode(true);
+    applyTerminalUI(true);
+    createTerminal(s);
+    await patchSettings({ mode: 'terminal' });
+  });
+
   document.addEventListener('hex-display-change', (e) => {
     setHexDisplay(e.detail.on);
   });

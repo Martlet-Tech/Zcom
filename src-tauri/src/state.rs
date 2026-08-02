@@ -8,6 +8,7 @@ pub const MODE_TCP_CLIENT: u8 = 1;
 pub const MODE_TCP_SERVER: u8 = 2;
 pub const MODE_UDP_CLIENT: u8 = 3;
 pub const MODE_UDP_SERVER: u8 = 4;
+pub const MODE_IDF: u8 = 5;
 
 pub enum NetIo {
     Stream(std::net::TcpStream),

@@ -66,6 +66,12 @@ async function loadDialogValues() {
   if (echoEnabled) echoEnabled.checked = ss.echoEnabled !== false;
   const echoPrefix = document.getElementById('setting-echo-prefix');
   if (echoPrefix) echoPrefix.checked = ss.echoPrefix !== false;
+  const espIdf = document.getElementById('setting-esp-idf');
+  if (espIdf) espIdf.value = ss.espIdfPath || '';
+  const espPython = document.getElementById('setting-esp-python');
+  if (espPython) espPython.value = ss.espPythonPath || '';
+  const espBaud = document.getElementById('setting-esp-baud');
+  if (espBaud) espBaud.value = ss.espBaud || 921600;
 }
 
 function applyStyles(s) {
@@ -103,7 +109,9 @@ export async function initSettings() {
   const s = await getSettings();
   applyStyles(s);
   invoke('set_reconnect_config', { auto: s.autoReconnect !== false, intervalMs: s.reconnectInterval || 1000 }).catch(() => {});
+  invoke('set_esp_config', { idfPath: s.espIdfPath || '', pythonPath: s.espPythonPath || '', baud: s.espBaud || 921600 }).catch(() => {});
   await applyMcpSettings(s);
+  initEspDetect();
   emit('theme-changed', s.theme);
   document.dispatchEvent(new CustomEvent('settings-applied', { detail: s }));
   document.dispatchEvent(new CustomEvent('send-newline-changed', { detail: { sendNewline: s.sendNewline } }));
@@ -142,11 +150,15 @@ export async function initSettings() {
       reconnectInterval: parseInt(document.getElementById('setting-reconnect-interval')?.value) || 1000,
       echoEnabled: document.getElementById('setting-echo-enabled')?.checked ?? true,
       echoPrefix: document.getElementById('setting-echo-prefix')?.checked ?? true,
+      espIdfPath: document.getElementById('setting-esp-idf')?.value ?? '',
+      espPythonPath: document.getElementById('setting-esp-python')?.value ?? '',
+      espBaud: parseInt(document.getElementById('setting-esp-baud')?.value) || 921600,
     };
 
     const merged = { ...(await getSettings()), ...settings };
     await saveSettings(merged);
     invoke('set_reconnect_config', { auto: settings.autoReconnect, intervalMs: settings.reconnectInterval }).catch(() => {});
+    invoke('set_esp_config', { idfPath: settings.espIdfPath, pythonPath: settings.espPythonPath, baud: settings.espBaud }).catch(() => {});
     setLang(settings.language);
     emit('language-changed', settings.language);
     invoke('set_tray_menu_language', { lang: settings.language }).catch(() => {});
@@ -166,6 +178,39 @@ export async function initSettings() {
       await invoke('mcp_stop').catch(() => {});
     }
     document.dispatchEvent(new CustomEvent('mcp-status-changed'));
+  }
+
+  function initEspDetect() {
+    const detectBtn = document.getElementById('btn-esp-detect');
+    const idfInput = document.getElementById('setting-esp-idf');
+    const pyInput = document.getElementById('setting-esp-python');
+    const idfList = document.getElementById('esp-idf-datalist');
+    const pyList = document.getElementById('esp-python-datalist');
+    if (!detectBtn || !idfInput) return;
+
+    detectBtn.addEventListener('click', async () => {
+      try {
+        const r = await invoke('detect_esp_paths');
+        const idfs = r.idfPaths || [];
+        const pys = r.pythonPaths || [];
+        idfList.innerHTML = '';
+        idfs.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p;
+          idfList.appendChild(opt);
+        });
+        pyList.innerHTML = '';
+        pys.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p;
+          pyList.appendChild(opt);
+        });
+        if (idfs.length > 0 && !idfInput.value) idfInput.value = idfs[0];
+        if (pys.length > 0 && !pyInput.value) pyInput.value = pys[0];
+      } catch (e) {
+        console.error('detect esp paths error:', e);
+      }
+    });
   }
 
   async function open() {

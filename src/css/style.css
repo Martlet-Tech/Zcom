@@ -742,6 +742,31 @@ select:focus, input:focus, textarea:focus {
   opacity: 0.7;
 }
 
+/* ===== ESP build/flash dialog ===== */
+.esp-log {
+  height: 320px;
+  overflow-y: auto;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-family: Consolas, 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.esp-log .esp-stage {
+  color: var(--accent);
+  font-weight: 600;
+}
+.esp-log .esp-err {
+  color: var(--danger);
+}
+
 /* ===== Status Bar ===== */
 #status-bar {
   display: flex;

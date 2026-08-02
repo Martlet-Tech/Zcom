@@ -1,6 +1,6 @@
 use crate::state::{
-    ConnState, NetIo, NetState, MODE_SERIAL, MODE_TCP_CLIENT, MODE_TCP_SERVER, MODE_UDP_CLIENT,
-    MODE_UDP_SERVER,
+    ConnState, NetIo, NetState, MODE_IDF, MODE_SERIAL, MODE_TCP_CLIENT, MODE_TCP_SERVER,
+    MODE_UDP_CLIENT, MODE_UDP_SERVER,
 };
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream, ToSocketAddrs, UdpSocket};
@@ -33,7 +33,7 @@ pub async fn set_conn_mode(
     mode: u8,
 ) -> Result<(), String> {
     let state = state.inner();
-    if !(MODE_SERIAL..=MODE_UDP_SERVER).contains(&mode) {
+    if !(MODE_SERIAL..=MODE_IDF).contains(&mode) {
         return Err("Unknown connection mode".into());
     }
     state.mode.store(mode, Ordering::SeqCst);

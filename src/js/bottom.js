@@ -1,10 +1,12 @@
 // bottom panel logic
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile, readFile } from '@tauri-apps/plugin-fs';
 import { getSettings, patchSettings } from './utils.js';
-import { setButtonIcon, Upload, Square } from './icons.js';
+import { setButtonIcon, Upload, Square, Flame } from './icons.js';
 import { t } from './i18n.js';
+import { PortState, PortEvent, portFSM } from './serial-state.js';
 
 let portOpen = false;
 let fileSending = false;
@@ -12,6 +14,8 @@ let fileSendAbort = false;
 let selectedFilePath = null;
 let lineEnding = 'crlf';
 let sendNewline = 'raw';
+let connType = 'serial';
+let espBusy = false;
 
 const LINE_ENDING_MAP = { none: '', cr: '\r', lf: '\n', crlf: '\r\n' };
 
@@ -46,6 +50,10 @@ export async function initBottom() {
   const saved = await getSettings();
   lineEnding = saved.lineEnding || 'crlf';
   sendNewline = saved.sendNewline || 'raw';
+  connType = saved.connType || 'serial';
+  if (connType === 'idf') {
+    setButtonIcon(fileSendBtn, Flame, t('esp.flashMonitor'));
+  }
   sendText.value = saved.sendText || '';
   chkHexSend.checked = saved.hexSend || false;
   chkChecksum.checked = saved.checksumOn || false;
@@ -96,7 +104,22 @@ export async function initBottom() {
   document.addEventListener('port-state-change', (e) => {
     portOpen = e.detail.open;
     sendBtn.disabled = !portOpen;
-    fileSendBtn.disabled = !portOpen || !filePathEl.value;
+    if (connType === 'idf') {
+      fileSendBtn.disabled = !filePathEl.value || espBusy;
+    } else {
+      fileSendBtn.disabled = !portOpen || !filePathEl.value;
+    }
+  });
+
+  document.addEventListener('conn-type-changed', (e) => {
+    connType = e.detail.type;
+    if (connType === 'idf') {
+      setButtonIcon(fileSendBtn, Flame, t('esp.flashMonitor'));
+      fileSendBtn.disabled = !filePathEl.value || espBusy;
+    } else {
+      setButtonIcon(fileSendBtn, Upload, t('file.send'));
+      fileSendBtn.disabled = !portOpen || !filePathEl.value;
+    }
   });
 
   document.addEventListener('i18n-changed', () => {
@@ -105,11 +128,14 @@ export async function initBottom() {
 
   fileOpenBtn.addEventListener('click', async () => {
     try {
-      const path = await open({ multiple: false, filters: [{ name: 'All Files', extensions: ['*'] }] });
+      const filters = connType === 'idf'
+        ? [{ name: 'CMakeLists.txt', extensions: ['txt'] }]
+        : [{ name: 'All Files', extensions: ['*'] }];
+      const path = await open({ multiple: false, filters });
       if (path) {
         selectedFilePath = path;
         filePathEl.value = path;
-        fileSendBtn.disabled = !portOpen;
+        fileSendBtn.disabled = connType === 'idf' ? espBusy : !portOpen;
         fileStat.classList.add('hidden');
       }
     } catch (e) {
@@ -118,6 +144,10 @@ export async function initBottom() {
   });
 
   fileSendBtn.addEventListener('click', async () => {
+    if (connType === 'idf') {
+      await flashFlow();
+      return;
+    }
     if (fileSending) {
       fileSendAbort = true;
       setButtonIcon(fileSendBtn, Square, t('file.abort'));
@@ -171,6 +201,146 @@ export async function initBottom() {
       const elapsed = (Date.now() - startTime) / 1000;
       const avgSpeed = (total / elapsed / 1024).toFixed(1);
       fileStat.textContent = t('file.sendTime', { seconds: elapsed.toFixed(2), speed: avgSpeed });
+    }
+  });
+
+  // ===== ESP-IDF build+flash flow =====
+  const espOverlay = document.getElementById('esp-flash-overlay');
+  const espLogEl = document.getElementById('esp-log');
+  const espStatusEl = document.getElementById('esp-flash-status');
+  const espCancelBtn = document.getElementById('btn-esp-cancel');
+  const espDialogCloseBtn = document.getElementById('btn-esp-dialog-close');
+
+  function showEspDialog() {
+    espLogEl.innerHTML = '';
+    espStatusEl.textContent = '—';
+    espOverlay.classList.remove('hidden');
+    espCancelBtn.disabled = false;
+  }
+
+  function closeEspDialog() {
+    espOverlay.classList.add('hidden');
+  }
+
+  function appendEspLog(stage, line) {
+    const div = document.createElement('div');
+    if (stage && line.startsWith('=====')) {
+      div.className = 'esp-stage';
+      div.textContent = line;
+    } else {
+      div.textContent = line;
+    }
+    espLogEl.appendChild(div);
+    espLogEl.scrollTop = espLogEl.scrollHeight;
+  }
+
+  async function closeSerialQuietly() {
+    if (portFSM.state !== PortState.CONNECTED && portFSM.state !== PortState.RECONNECTING) return;
+    try {
+      await invoke('close_port');
+    } catch (e) {
+      console.error('close_port error:', e);
+    }
+    portFSM.transition(PortEvent.CLOSED);
+  }
+
+  async function openSerialForMonitor() {
+    const s = await getSettings();
+    if (!s.currentPort) return;
+    portFSM.transition(PortEvent.OPEN_START, { portName: s.currentPort });
+    try {
+      await invoke('open_port', {
+        path: s.currentPort,
+        baud: s.baudRate || 115200,
+        charSize: s.charSize || 8,
+        stopBits: s.stopBits || 1,
+        parity: s.parity || 'none',
+        flowControl: s.flowControl || 'none',
+      });
+      portFSM.transition(PortEvent.OPEN_OK);
+      document.dispatchEvent(new CustomEvent('open-monitor'));
+    } catch (e) {
+      console.error('open_port error:', e);
+      portFSM.transition(PortEvent.OPEN_FAIL);
+    }
+  }
+
+  async function flashFlow() {
+    const filePath = filePathEl.value.trim();
+    if (!filePath || espBusy) return;
+    const projectDir = filePath.replace(/[\\/][^\\/]*$/, '');
+
+    const s = await getSettings();
+    if (!s.espIdfPath) {
+      alert(t('esp.needConfig'));
+      return;
+    }
+    if (!s.currentPort) {
+      alert(t('esp.needPort'));
+      return;
+    }
+
+    espBusy = true;
+    fileSendBtn.disabled = true;
+    await closeSerialQuietly();
+
+    try {
+      await invoke('set_esp_config', {
+        idfPath: s.espIdfPath || '',
+        pythonPath: s.espPythonPath || '',
+        baud: s.espBaud || 921600,
+      });
+    } catch (e) {
+      console.error('set_esp_config error:', e);
+    }
+
+    showEspDialog();
+    try {
+      await invoke('esp_build_flash_start', {
+        projectDir,
+        port: s.currentPort,
+        baud: s.espBaud || 921600,
+      });
+      espStatusEl.textContent = t('esp.running');
+    } catch (e) {
+      espStatusEl.textContent = String(e);
+      espBusy = false;
+      fileSendBtn.disabled = false;
+    }
+  }
+
+  espCancelBtn.addEventListener('click', async () => {
+    espCancelBtn.disabled = true;
+    espStatusEl.textContent = t('esp.cancelling');
+    await invoke('esp_flash_cancel').catch(() => {});
+  });
+
+  espDialogCloseBtn.addEventListener('click', () => {
+    if (espBusy) {
+      invoke('esp_flash_cancel').catch(() => {});
+      espCancelBtn.disabled = true;
+      espStatusEl.textContent = t('esp.cancelling');
+    } else {
+      closeEspDialog();
+    }
+  });
+
+  listen('esp-log', (e) => {
+    appendEspLog(e.payload.stage, e.payload.line);
+  });
+
+  listen('esp-done', (e) => {
+    espBusy = false;
+    fileSendBtn.disabled = !filePathEl.value;
+    if (e.payload.ok) {
+      espStatusEl.textContent = t('esp.done');
+      setTimeout(() => {
+        closeEspDialog();
+        openSerialForMonitor();
+      }, 800);
+    } else {
+      espStatusEl.textContent = t('esp.failed', { stage: e.payload.stage });
+      espCancelBtn.disabled = false;
     }
   });
 
