@@ -364,6 +364,13 @@ select:focus, input:focus, textarea:focus {
   background: #e74c3c;
   box-shadow: 0 0 6px #e74c3c;
 }
+.port-status.reconnecting {
+  animation: port-blink 0.8s ease-in-out infinite alternate;
+}
+@keyframes port-blink {
+  from { background: var(--fg-dim); box-shadow: none; }
+  to { background: #ffcc00; box-shadow: 0 0 6px #ffcc00; }
+}
 
 /* ===== Content ===== */
 #content {

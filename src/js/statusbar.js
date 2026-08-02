@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { getSettings, patchSettings, formatByteCount } from './utils.js';
 import { t } from './i18n.js';
 
@@ -17,6 +18,12 @@ export async function initStatusBar() {
   document.addEventListener('port-state-change', (e) => {
     portConnected = e.detail.open;
     if (!e.detail.open) portInfo.innerHTML = `<span>${t('common.disconnected')}</span>`;
+  });
+
+  listen('port-reconnecting', (e) => {
+    portConnected = false;
+    const p = e.payload || {};
+    portInfo.innerHTML = t('statusbar.reconnectingInfo', { name: p.name || '', baud: p.baud || '' });
   });
 
   const saved = await getSettings();

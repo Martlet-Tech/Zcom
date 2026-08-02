@@ -89,6 +89,8 @@ pub fn run() {
             serial_cmd::get_port_info,
             serial_cmd::calculate_checksum,
             serial_cmd::set_baud_rate,
+            serial_cmd::switch_port,
+            serial_cmd::set_reconnect_config,
             multi_string::open_multi_string_window,
             multi_string::load_multi_strings,
             multi_string::save_multi_strings,

@@ -1,6 +1,6 @@
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicU8};
-use std::sync::Arc;
-use tokio::sync::Mutex;
+use std::sync::{Arc, Mutex};
+use tokio::sync::Mutex as AsyncMutex;
 
 pub struct LocaleState(pub std::sync::Mutex<String>);
 
@@ -20,11 +20,14 @@ pub struct SerialState {
     pub tx_bytes: Arc<AtomicU64>,
     pub rx_bytes: Arc<AtomicU64>,
     pub connected: Arc<AtomicBool>,
-    pub op_lock: Arc<Mutex<()>>,
+    pub op_lock: Arc<AsyncMutex<()>>,
     pub char_size: Arc<AtomicU8>,
     pub stop_bits: Arc<AtomicU8>,
-    pub parity: Arc<Mutex<String>>,
-    pub flow_control: Arc<Mutex<String>>,
+    pub parity: Arc<AsyncMutex<String>>,
+    pub flow_control: Arc<AsyncMutex<String>>,
+    pub auto_reconnect: Arc<AtomicBool>,
+    pub reconnect_interval_ms: Arc<AtomicU32>,
+    pub generation: Arc<AtomicU32>,
 }
 
 impl Clone for SerialState {
@@ -47,11 +50,14 @@ impl SerialState {
             tx_bytes: Arc::new(AtomicU64::new(0)),
             rx_bytes: Arc::new(AtomicU64::new(0)),
             connected: Arc::new(AtomicBool::new(false)),
-            op_lock: Arc::new(Mutex::new(())),
+            op_lock: Arc::new(AsyncMutex::new(())),
             char_size: Arc::new(AtomicU8::new(8)),
             stop_bits: Arc::new(AtomicU8::new(1)),
-            parity: Arc::new(Mutex::new("none".to_string())),
-            flow_control: Arc::new(Mutex::new("none".to_string())),
+            parity: Arc::new(AsyncMutex::new("none".to_string())),
+            flow_control: Arc::new(AsyncMutex::new("none".to_string())),
+            auto_reconnect: Arc::new(AtomicBool::new(true)),
+            reconnect_interval_ms: Arc::new(AtomicU32::new(1000)),
+            generation: Arc::new(AtomicU32::new(0)),
         }
     }
 
@@ -71,11 +77,14 @@ impl SerialState {
             stop_bits: self.stop_bits.clone(),
             parity: self.parity.clone(),
             flow_control: self.flow_control.clone(),
+            auto_reconnect: self.auto_reconnect.clone(),
+            reconnect_interval_ms: self.reconnect_interval_ms.clone(),
+            generation: self.generation.clone(),
         }
     }
 
     pub async fn to_port_info(&self) -> serde_json::Value {
-        let name = self.port_name.lock().await.clone().unwrap_or_default();
+        let name = self.port_name.lock().unwrap_or_else(|e| e.into_inner()).clone().unwrap_or_default();
         let connected = self.connected.load(Ordering::SeqCst);
         let tx = self.tx_bytes.load(Ordering::SeqCst);
         let rx = self.rx_bytes.load(Ordering::SeqCst);

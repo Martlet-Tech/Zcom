@@ -60,6 +60,10 @@ async function loadDialogValues() {
   if (mcpEnabled) mcpEnabled.checked = ss.mcpEnabled;
   const mcpPort = document.getElementById('setting-mcp-port');
   if (mcpPort) mcpPort.value = ss.mcpPort;
+  const autoReconnect = document.getElementById('setting-auto-reconnect');
+  if (autoReconnect) autoReconnect.checked = ss.autoReconnect !== false;
+  const reconnectInterval = document.getElementById('setting-reconnect-interval');
+  if (reconnectInterval) reconnectInterval.value = ss.reconnectInterval || 1000;
 }
 
 function applyStyles(s) {
@@ -98,6 +102,7 @@ export async function initSettings() {
 
   const s = await getSettings();
   applyStyles(s);
+  invoke('set_reconnect_config', { auto: s.autoReconnect !== false, intervalMs: s.reconnectInterval || 1000 }).catch(() => {});
   await applyMcpSettings(s);
   emit('theme-changed', s.theme);
   document.dispatchEvent(new CustomEvent('settings-applied', { detail: s }));
@@ -135,10 +140,13 @@ export async function initSettings() {
       closeBehavior: segClose ? readSegmented(segClose) || 'ask' : 'ask',
       mcpEnabled: document.getElementById('setting-mcp-enabled')?.checked ?? false,
       mcpPort: parseInt(document.getElementById('setting-mcp-port')?.value) || 9876,
+      autoReconnect: document.getElementById('setting-auto-reconnect')?.checked ?? true,
+      reconnectInterval: parseInt(document.getElementById('setting-reconnect-interval')?.value) || 1000,
     };
 
     const merged = { ...(await getSettings()), ...settings };
     await saveSettings(merged);
+    invoke('set_reconnect_config', { auto: settings.autoReconnect, intervalMs: settings.reconnectInterval }).catch(() => {});
     setLang(settings.language);
     emit('language-changed', settings.language);
     invoke('set_tray_menu_language', { lang: settings.language }).catch(() => {});

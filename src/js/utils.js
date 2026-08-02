@@ -39,6 +39,8 @@ const defaults = {
   flowControl: 'none',
   mcpEnabled: false,
   mcpPort: 9876,
+  autoReconnect: true,
+  reconnectInterval: 1000,
 };
 
 export async function getSettings() {

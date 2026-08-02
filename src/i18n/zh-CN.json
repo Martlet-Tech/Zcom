@@ -16,7 +16,8 @@
     "connected": "已连接",
     "connectionFailed": "连接失败",
     "settingsFailed": "设置失败",
-    "doubleClickCopy": "双击可复制"
+    "doubleClickCopy": "双击可复制",
+    "reconnecting": "连接断开,正在重连..."
   },
   "titlebar": {
     "mcpControl": "MCP 服务控制",
@@ -76,7 +77,8 @@
     "timestamp": "时间戳",
     "fold": "折叠",
     "encoding": "编码",
-    "connectedInfo": "{name} 已连接 {baud} {dataBits}N{stopBits}"
+    "connectedInfo": "{name} 已连接 {baud} {dataBits}N{stopBits}",
+    "reconnectingInfo": "{name} 重连中 {baud}"
   },
   "settings": {
     "title": "系统设置",
@@ -107,6 +109,8 @@
     "closeBehavior": "关闭行为:",
     "hideToTray": "隐藏到托盘",
     "ask": "询问",
+    "autoReconnect": "自动重连:",
+    "reconnectInterval": "间隔:",
     "mcp": "MCP 服务:",
     "enable": "启用",
     "port": "端口:"

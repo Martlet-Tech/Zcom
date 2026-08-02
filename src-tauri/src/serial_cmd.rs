@@ -14,6 +14,12 @@ pub struct PortInfo {
     pub description: String,
 }
 
+#[derive(Clone, Copy, PartialEq)]
+enum ReadLoopEnd {
+    Stopped,
+    DeviceLost,
+}
+
 #[tauri::command]
 pub async fn list_ports() -> Result<Vec<PortInfo>, String> {
     let ports = serial2::SerialPort::available_ports().map_err(|e| e.to_string())?;
@@ -42,6 +48,41 @@ fn port_name_from_path(path: &std::path::Path) -> String {
     {
         path.to_string_lossy().to_string()
     }
+}
+
+fn open_port_sync(
+    path: &str,
+    baud: u32,
+    char_size: u8,
+    stop_bits: u8,
+    parity: &str,
+    flow_control: &str,
+) -> Result<serial2::SerialPort, String> {
+    serial2::SerialPort::open(path, |mut s: serial2::Settings| {
+        s.set_baud_rate(baud)?;
+        s.set_char_size(match char_size {
+            5 => CharSize::Bits5,
+            6 => CharSize::Bits6,
+            7 => CharSize::Bits7,
+            _ => CharSize::Bits8,
+        });
+        s.set_stop_bits(match stop_bits {
+            2 => StopBits::Two,
+            _ => StopBits::One,
+        });
+        s.set_parity(match parity {
+            "odd" => Parity::Odd,
+            "even" => Parity::Even,
+            _ => Parity::None,
+        });
+        s.set_flow_control(match flow_control {
+            "hardware" => FlowControl::RtsCts,
+            "software" => FlowControl::XonXoff,
+            _ => FlowControl::None,
+        });
+        Ok(s)
+    })
+    .map_err(|e| format!("Failed to open {}: {}", path, e))
 }
 
 #[tauri::command]
@@ -73,38 +114,10 @@ async fn open_port_inner(
         return Err("Port already open".into());
     }
 
-    let port = serial2::SerialPort::open(path, |mut s: serial2::Settings| {
-        s.set_baud_rate(baud)?;
-        s.set_char_size(match char_size {
-            5 => CharSize::Bits5,
-            6 => CharSize::Bits6,
-            7 => CharSize::Bits7,
-            _ => CharSize::Bits8,
-        });
-        s.set_stop_bits(match stop_bits {
-            2 => StopBits::Two,
-            _ => StopBits::One,
-        });
-        s.set_parity(match parity {
-            "odd" => Parity::Odd,
-            "even" => Parity::Even,
-            _ => Parity::None,
-        });
-        s.set_flow_control(match flow_control {
-            "hardware" => FlowControl::RtsCts,
-            "software" => FlowControl::XonXoff,
-            _ => FlowControl::None,
-        });
-        Ok(s)
-    }).map_err(|e| format!("Failed to open {}: {}", path, e))?;
+    let port = open_port_sync(path, baud, char_size, stop_bits, parity, flow_control)?;
 
-    let mut reader = port.try_clone()
-        .map_err(|e| format!("Cannot clone port: {}", e))?;
-    reader.set_read_timeout(Duration::from_millis(1))
-        .ok();
-
-    *state.port.lock().await = Some(port);
-    *state.port_name.lock().await = Some(path.to_string());
+    *state.port.lock().unwrap_or_else(|e| e.into_inner()) = Some(port);
+    *state.port_name.lock().unwrap_or_else(|e| e.into_inner()) = Some(path.to_string());
     state.baud_rate.store(baud, Ordering::SeqCst);
     state.char_size.store(char_size, Ordering::SeqCst);
     state.stop_bits.store(stop_bits, Ordering::SeqCst);
@@ -114,59 +127,203 @@ async fn open_port_inner(
     state.stop_reading.store(false, Ordering::SeqCst);
     state.tx_bytes.store(0, Ordering::SeqCst);
     state.rx_bytes.store(0, Ordering::SeqCst);
+    let gen = state.generation.fetch_add(1, Ordering::SeqCst) + 1;
 
-    let stop_flag = state.stop_reading.clone();
-    let rx_count = state.rx_bytes.clone();
-    let connected_flag = state.connected.clone();
-    let suppress_emit = state.suppress_close_event.clone();
-    let app_handle = app.clone();
-
+    let c_state = state.clone();
+    let c_app = app.clone();
+    let c_path = path.to_string();
+    let c_parity = parity.to_string();
+    let c_flow_control = flow_control.to_string();
     let handle = tokio::task::spawn_blocking(move || {
-        const GAP_TIMEOUT: Duration = Duration::from_millis(5);
-        let mut buf = [0u8; 4096];
-        let mut acc: Vec<u8> = Vec::new();
-        let mut last_time = Instant::now();
-
-        loop {
-            if stop_flag.load(Ordering::SeqCst) {
-                if !acc.is_empty() {
-                    let _ = app_handle.emit("serial-data", acc.clone());
-                }
-                break;
-            }
-            match reader.read(&mut buf) {
-                Ok(n) if n > 0 => {
-                    acc.extend_from_slice(&buf[..n]);
-                    last_time = Instant::now();
-                    rx_count.fetch_add(n as u64, Ordering::SeqCst);
-                    if acc.len() >= 4096 {
-                        let data = std::mem::take(&mut acc);
-                        let _ = app_handle.emit("serial-data", data);
-                    }
-                }
-                Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => {
-                    if !acc.is_empty() && last_time.elapsed() >= GAP_TIMEOUT {
-                        let data = std::mem::take(&mut acc);
-                        let _ = app_handle.emit("serial-data", data);
-                    }
-                    std::thread::sleep(Duration::from_millis(10));
-                }
-                Err(e) => {
-                    log::error!("Serial read error: {}", e);
-                    break;
-                }
-                _ => {}
-            }
-        }
-        connected_flag.store(false, Ordering::SeqCst);
-        if !suppress_emit.load(Ordering::SeqCst) {
-            let _ = app_handle.emit("port-closed", ());
-        }
+        run_port_lifecycle(
+            c_state,
+            c_app,
+            c_path,
+            baud,
+            char_size,
+            stop_bits,
+            c_parity,
+            c_flow_control,
+            gen,
+        );
     });
 
-    *state.read_handle.lock().await = Some(handle);
+    *state.read_handle.lock().unwrap_or_else(|e| e.into_inner()) = Some(handle);
 
     Ok(())
+}
+
+fn run_port_lifecycle(
+    state: SerialState,
+    app: tauri::AppHandle,
+    path: String,
+    baud: u32,
+    char_size: u8,
+    stop_bits: u8,
+    parity: String,
+    flow_control: String,
+    gen: u32,
+) {
+    let stale = || state.generation.load(Ordering::SeqCst) != gen;
+    loop {
+        let mut reader = {
+            let port = state.port.lock().unwrap_or_else(|e| e.into_inner());
+            match port.as_ref().and_then(|p| p.try_clone().ok()) {
+                Some(r) => r,
+                None => {
+                    if !state.suppress_close_event.load(Ordering::SeqCst) {
+                        let _ = app.emit("port-closed", ());
+                    }
+                    return;
+                }
+            }
+        };
+        reader.set_read_timeout(Duration::from_millis(1)).ok();
+
+        let end = read_loop(reader, &state, &app);
+        match end {
+            ReadLoopEnd::Stopped => {
+                if !state.suppress_close_event.load(Ordering::SeqCst) {
+                    let _ = app.emit("port-closed", ());
+                }
+                return;
+            }
+            ReadLoopEnd::DeviceLost => {
+                if stale() {
+                    return;
+                }
+                *state.port.lock().unwrap_or_else(|e| e.into_inner()) = None;
+                *state.port_name.lock().unwrap_or_else(|e| e.into_inner()) = None;
+                state.connected.store(false, Ordering::SeqCst);
+                if state.suppress_close_event.load(Ordering::SeqCst)
+                    || !state.auto_reconnect.load(Ordering::SeqCst)
+                {
+                    if !state.suppress_close_event.load(Ordering::SeqCst) {
+                        let _ = app.emit("port-closed", ());
+                    }
+                    return;
+                }
+                let _ = app.emit(
+                    "port-reconnecting",
+                    serde_json::json!({ "name": path, "baud": baud }),
+                );
+                match reconnect_once(&state, &path, baud, char_size, stop_bits, &parity, &flow_control) {
+                    Some(port) => {
+                        if stale() {
+                            return;
+                        }
+                        *state.port.lock().unwrap_or_else(|e| e.into_inner()) = Some(port);
+                        *state.port_name.lock().unwrap_or_else(|e| e.into_inner()) = Some(path.clone());
+                        state.baud_rate.store(baud, Ordering::SeqCst);
+                        state.char_size.store(char_size, Ordering::SeqCst);
+                        state.stop_bits.store(stop_bits, Ordering::SeqCst);
+                        state.connected.store(true, Ordering::SeqCst);
+                        state.stop_reading.store(false, Ordering::SeqCst);
+                        state.tx_bytes.store(0, Ordering::SeqCst);
+                        state.rx_bytes.store(0, Ordering::SeqCst);
+                        let _ = app.emit("port-reconnected", ());
+                        continue;
+                    }
+                    None => {
+                        if state.connected.load(Ordering::SeqCst) {
+                            return;
+                        }
+                        if !state.suppress_close_event.load(Ordering::SeqCst) {
+                            let _ = app.emit("port-closed", ());
+                        }
+                        return;
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn read_loop(
+    reader: serial2::SerialPort,
+    state: &SerialState,
+    app: &tauri::AppHandle,
+) -> ReadLoopEnd {
+    const GAP_TIMEOUT: Duration = Duration::from_millis(5);
+    let mut buf = [0u8; 4096];
+    let mut acc: Vec<u8> = Vec::new();
+    let mut last_time = Instant::now();
+
+    loop {
+        if state.stop_reading.load(Ordering::SeqCst) {
+            if !acc.is_empty() {
+                let _ = app.emit("serial-data", acc.clone());
+            }
+            return ReadLoopEnd::Stopped;
+        }
+        match reader.read(&mut buf) {
+            Ok(n) if n > 0 => {
+                acc.extend_from_slice(&buf[..n]);
+                last_time = Instant::now();
+                state.rx_bytes.fetch_add(n as u64, Ordering::SeqCst);
+                if acc.len() >= 4096 {
+                    let data = std::mem::take(&mut acc);
+                    let _ = app.emit("serial-data", data);
+                }
+            }
+            Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => {
+                if !acc.is_empty() && last_time.elapsed() >= GAP_TIMEOUT {
+                    let data = std::mem::take(&mut acc);
+                    let _ = app.emit("serial-data", data);
+                }
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            Err(e) => {
+                log::warn!("Serial read error (device removed?): {}", e);
+                return ReadLoopEnd::DeviceLost;
+            }
+            _ => {}
+        }
+    }
+}
+
+fn reconnect_once(
+    state: &SerialState,
+    path: &str,
+    baud: u32,
+    char_size: u8,
+    stop_bits: u8,
+    parity: &str,
+    flow_control: &str,
+) -> Option<serial2::SerialPort> {
+    let step = 50u64;
+    loop {
+        let interval = state.reconnect_interval_ms.load(Ordering::SeqCst).max(100);
+        let mut slept = 0u64;
+        while slept < interval as u64 {
+            std::thread::sleep(Duration::from_millis(step));
+            slept += step;
+            if state.stop_reading.load(Ordering::SeqCst)
+                || state.connected.load(Ordering::SeqCst)
+            {
+                return None;
+            }
+        }
+        if state.stop_reading.load(Ordering::SeqCst) {
+            return None;
+        }
+        if state.connected.load(Ordering::SeqCst) {
+            return None;
+        }
+        match open_port_sync(path, baud, char_size, stop_bits, parity, flow_control) {
+            Ok(port) => {
+                if state.stop_reading.load(Ordering::SeqCst) {
+                    return None;
+                }
+                return Some(port);
+            }
+            Err(_) => {
+                if state.connected.load(Ordering::SeqCst) {
+                    return None;
+                }
+            }
+        }
+    }
 }
 
 #[tauri::command]
@@ -183,21 +340,44 @@ async fn close_port_inner(
     state.stop_reading.store(true, Ordering::SeqCst);
     state.connected.store(false, Ordering::SeqCst);
 
-    let handle = state.read_handle.lock().await.take();
+    let handle = state.read_handle.lock().unwrap_or_else(|e| e.into_inner()).take();
     if let Some(h) = handle {
-        if let Err(e) = h.await {
-            log::error!("Read task panicked: {:?}", e);
+        if let Err(e) = tokio::time::timeout(Duration::from_millis(300), h).await {
+            log::warn!("Read task did not exit within 300ms: {:?}", e);
         }
     }
 
-    let mut port = state.port.lock().await;
+    let mut port = state.port.lock().unwrap_or_else(|e| e.into_inner());
     if let Some(ref p) = *port {
         let _ = p.discard_buffers();
     }
     *port = None;
-    *state.port_name.lock().await = None;
+    *state.port_name.lock().unwrap_or_else(|e| e.into_inner()) = None;
 
     Ok(())
+}
+
+async fn reopen_with_params(
+    state: &SerialState,
+    app: &tauri::AppHandle,
+    path: &str,
+    baud: u32,
+    char_size: u8,
+    stop_bits: u8,
+    parity: &str,
+    flow_control: &str,
+) -> Result<(), String> {
+    state.suppress_close_event.store(true, Ordering::SeqCst);
+
+    let result = async {
+        close_port_inner(state).await?;
+        open_port_inner(state, app, path, baud, char_size, stop_bits, parity, flow_control).await
+    }
+    .await;
+
+    state.suppress_close_event.store(false, Ordering::SeqCst);
+
+    result
 }
 
 #[tauri::command]
@@ -212,17 +392,22 @@ pub async fn set_baud_rate(
     flow_control: String,
 ) -> Result<(), String> {
     let _guard = state.op_lock.lock().await;
+    reopen_with_params(&state, &app, &path, baud, char_size, stop_bits, &parity, &flow_control).await
+}
 
-    state.suppress_close_event.store(true, Ordering::SeqCst);
-
-    let result = async {
-        close_port_inner(&state).await?;
-        open_port_inner(&state, &app, &path, baud, char_size, stop_bits, &parity, &flow_control).await
-    }.await;
-
-    state.suppress_close_event.store(false, Ordering::SeqCst);
-
-    result
+#[tauri::command]
+pub async fn switch_port(
+    state: tauri::State<'_, SerialState>,
+    app: tauri::AppHandle,
+    path: String,
+    baud: u32,
+    char_size: u8,
+    stop_bits: u8,
+    parity: String,
+    flow_control: String,
+) -> Result<(), String> {
+    let _guard = state.op_lock.lock().await;
+    reopen_with_params(&state, &app, &path, baud, char_size, stop_bits, &parity, &flow_control).await
 }
 
 pub async fn send_data_internal(
@@ -241,7 +426,7 @@ pub async fn send_data_internal(
     if !state.connected.load(Ordering::SeqCst) {
         return Err("Port not open".into());
     }
-    let mut port = state.port.lock().await;
+    let mut port = state.port.lock().unwrap_or_else(|e| e.into_inner());
     let port = port.as_mut().ok_or("Port not open")?;
     port.write_all(&bytes).map_err(|e| format!("Write error: {}", e))?;
     port.flush().map_err(|e| format!("Flush error: {}", e))?;
@@ -289,7 +474,7 @@ pub async fn send_data_raw(
     if !state.connected.load(Ordering::SeqCst) {
         return Err("Port not open".into());
     }
-    let mut port = state.port.lock().await;
+    let mut port = state.port.lock().unwrap_or_else(|e| e.into_inner());
     let port = port.as_mut().ok_or("Port not open")?;
     port.write_all(&bytes).map_err(|e| format!("Write error: {}", e))?;
     state.tx_bytes.fetch_add(bytes.len() as u64, Ordering::SeqCst);
@@ -304,7 +489,7 @@ pub async fn send_raw_bytes(
     if !state.connected.load(Ordering::SeqCst) {
         return Err("Port not open".into());
     }
-    let mut port = state.port.lock().await;
+    let mut port = state.port.lock().unwrap_or_else(|e| e.into_inner());
     let port = port.as_mut().ok_or("Port not open")?;
     port.write_all(&bytes).map_err(|e| format!("Write error: {}", e))?;
     port.flush().map_err(|e| format!("Flush error: {}", e))?;
@@ -318,6 +503,17 @@ pub async fn reset_io_counters(
 ) -> Result<(), String> {
     state.tx_bytes.store(0, Ordering::SeqCst);
     state.rx_bytes.store(0, Ordering::SeqCst);
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn set_reconnect_config(
+    state: tauri::State<'_, SerialState>,
+    auto: bool,
+    interval_ms: u32,
+) -> Result<(), String> {
+    state.auto_reconnect.store(auto, Ordering::SeqCst);
+    state.reconnect_interval_ms.store(interval_ms.max(100), Ordering::SeqCst);
     Ok(())
 }
 

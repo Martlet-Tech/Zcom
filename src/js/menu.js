@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { getVersion } from '@tauri-apps/api/app';
 import { getSettings, patchSettings } from './utils.js';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { listen } from '@tauri-apps/api/event';
 import { t } from './i18n.js';
 
 let currentPort = null;
@@ -24,9 +25,10 @@ export function initMenu() {
 
   let statusTitleKey = 'common.disconnected';
   let statusClass = 'port-status';
+  let reconnecting = false;
 
   function applyPortUI() {
-    toggleBtn.textContent = portOpen ? t('common.close') : t('common.open');
+    toggleBtn.textContent = (portOpen || reconnecting) ? t('common.close') : t('common.open');
     statusEl.className = statusClass;
     statusEl.title = t(statusTitleKey);
     if (!currentPort) comText.textContent = t('menu.selectPort');
@@ -34,28 +36,102 @@ export function initMenu() {
 
   document.addEventListener('i18n-changed', applyPortUI);
 
-  function setComDisabled(d) {
-    comEl.classList.toggle('disabled', d);
-  }
+  listen('port-reconnecting', () => {
+    reconnecting = true;
+    statusClass = 'port-status reconnecting';
+    statusTitleKey = 'common.reconnecting';
+    applyPortUI();
+    if (!comEl.classList.contains('open')) refresh();
+  });
+
+  listen('port-reconnected', () => {
+    reconnecting = false;
+    portOpen = true;
+    statusClass = 'port-status connected';
+    statusTitleKey = 'common.connected';
+    applyPortUI();
+    toggleBtn.disabled = false;
+    document.dispatchEvent(new CustomEvent('port-state-change', { detail: { open: true } }));
+    if (!comEl.classList.contains('open')) refresh();
+  });
 
   function closeComDropdown() {
     comEl.classList.remove('open');
   }
 
   function toggleComDropdown() {
-    if (comEl.classList.contains('disabled')) return;
     comEl.classList.toggle('open');
   }
 
   async function selectComOption(el) {
-    if (!el || comEl.classList.contains('disabled')) return;
+    if (!el) return;
     comDropdown.querySelectorAll('.cs-option.selected').forEach(e => e.classList.remove('selected'));
     el.classList.add('selected');
     const val = el.dataset.value || '';
+    const prevPort = currentPort;
     currentPort = val || null;
     comText.textContent = el.textContent || t('menu.selectPort');
-    toggleBtn.disabled = !currentPort;
     closeComDropdown();
+
+    if (val === prevPort && (portOpen || reconnecting)) {
+      await patchSettings({ currentPort: val });
+      return;
+    }
+
+    if (portOpen || reconnecting) {
+      if (!val) {
+        try {
+          await invoke('close_port');
+        } catch (e) {
+          console.error('close_port error:', e);
+        }
+        reconnecting = false;
+        portOpen = false;
+        statusClass = 'port-status';
+        statusTitleKey = 'common.disconnected';
+        applyPortUI();
+        toggleBtn.disabled = true;
+        document.dispatchEvent(new CustomEvent('port-state-change', { detail: { open: false } }));
+      } else {
+        statusClass = 'port-status';
+        statusTitleKey = 'common.disconnected';
+        applyPortUI();
+        const t0 = Date.now();
+        try {
+          await invoke('switch_port', {
+            path: val,
+            baud: baudRate,
+            charSize: charSize,
+            stopBits: stopBits,
+            parity: parity,
+            flowControl: flowControl,
+          });
+          const elapsed = Date.now() - t0;
+          if (elapsed < 250) {
+            await new Promise(r => setTimeout(r, 250 - elapsed));
+          }
+          reconnecting = false;
+          portOpen = true;
+          statusClass = 'port-status connected';
+          statusTitleKey = 'common.connected';
+          applyPortUI();
+          toggleBtn.disabled = false;
+          document.dispatchEvent(new CustomEvent('port-state-change', { detail: { open: true } }));
+        } catch (e) {
+          console.error('switch_port error:', e);
+          reconnecting = false;
+          portOpen = false;
+          statusClass = 'port-status error';
+          statusTitleKey = 'common.connectionFailed';
+          applyPortUI();
+          toggleBtn.disabled = false;
+          document.dispatchEvent(new CustomEvent('port-state-change', { detail: { open: false } }));
+        }
+      }
+    } else {
+      toggleBtn.disabled = !currentPort;
+    }
+
     await patchSettings({ currentPort: val });
   }
 
@@ -64,35 +140,43 @@ export function initMenu() {
       const ports = await invoke('list_ports');
       const saved = await getSettings();
       comDropdown.innerHTML = '';
-
-      const placeholder = document.createElement('div');
-      placeholder.className = 'cs-option placeholder';
-      placeholder.textContent = t('menu.selectPort');
-      placeholder.dataset.value = '';
-      placeholder.addEventListener('click', () => selectComOption(placeholder));
-      comDropdown.appendChild(placeholder);
-
       let foundSaved = false;
+
+      if (ports.length === 0) {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'cs-option placeholder';
+        placeholder.textContent = t('menu.selectPort');
+        placeholder.dataset.value = '';
+        placeholder.addEventListener('click', () => selectComOption(placeholder));
+        comDropdown.appendChild(placeholder);
+        if (!reconnecting) {
+          placeholder.classList.add('selected');
+          comText.textContent = t('menu.selectPort');
+          currentPort = null;
+          toggleBtn.disabled = true;
+        } else {
+          comText.textContent = currentPort || t('menu.selectPort');
+        }
+        return;
+      }
+
       ports.forEach(p => {
         const label = p.description ? `${p.name} - ${p.description}` : p.name;
         const opt = document.createElement('div');
         opt.className = 'cs-option';
         opt.textContent = label;
         opt.dataset.value = p.name;
-        if (p.name === saved.currentPort) {
+        if (p.name === saved.currentPort || p.name === currentPort) {
           opt.classList.add('selected');
           comText.textContent = label;
-          currentPort = saved.currentPort;
+          currentPort = p.name;
           foundSaved = true;
         }
         opt.addEventListener('click', () => selectComOption(opt));
         comDropdown.appendChild(opt);
       });
 
-      if (foundSaved) {
-        toggleBtn.disabled = false;
-      } else {
-        placeholder.classList.add('selected');
+      if (!foundSaved && !reconnecting) {
         comText.textContent = t('menu.selectPort');
         currentPort = null;
         toggleBtn.disabled = true;
@@ -200,7 +284,6 @@ export function initMenu() {
         statusClass = 'port-status error';
         statusTitleKey = 'common.settingsFailed';
         applyPortUI();
-        setComDisabled(false);
         document.dispatchEvent(new CustomEvent('port-state-change', { detail: { open: false } }));
       }
     }
@@ -249,6 +332,22 @@ export function initMenu() {
   refreshBtn.addEventListener('click', refresh);
 
   toggleBtn.addEventListener('click', async () => {
+    if (reconnecting) {
+      reconnecting = false;
+      toggleBtn.disabled = true;
+      try {
+        await invoke('close_port');
+      } catch (e) {
+        console.error('close_port error:', e);
+      }
+      portOpen = false;
+      statusClass = 'port-status';
+      statusTitleKey = 'common.disconnected';
+      applyPortUI();
+      toggleBtn.disabled = false;
+      document.dispatchEvent(new CustomEvent('port-state-change', { detail: { open: false } }));
+      return;
+    }
     if (portOpen) {
       try {
         await invoke('close_port');
@@ -256,7 +355,6 @@ export function initMenu() {
         statusClass = 'port-status';
         statusTitleKey = 'common.disconnected';
         applyPortUI();
-        setComDisabled(false);
         document.dispatchEvent(new CustomEvent('port-state-change', { detail: { open: false } }));
       } catch (e) {
         console.error('close_port error:', e);
@@ -276,7 +374,6 @@ export function initMenu() {
         statusClass = 'port-status connected';
         statusTitleKey = 'common.connected';
         applyPortUI();
-        setComDisabled(true);
         document.dispatchEvent(new CustomEvent('port-state-change', { detail: { open: true } }));
       } catch (e) {
         console.error('open_port error:', e);
@@ -359,12 +456,14 @@ export function initMenu() {
   });
 
   document.addEventListener('port-closed', () => {
+    reconnecting = false;
     portOpen = false;
     statusClass = 'port-status';
     statusTitleKey = 'common.disconnected';
     applyPortUI();
-    setComDisabled(false);
+    toggleBtn.disabled = false;
     document.dispatchEvent(new CustomEvent('port-state-change', { detail: { open: false } }));
+    if (!comEl.classList.contains('open')) refresh();
   });
 }
 

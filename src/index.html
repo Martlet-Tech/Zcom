@@ -236,6 +236,13 @@
           </div>
         </div>
         <div class="setting-row">
+          <label data-i18n="settings.autoReconnect">自动重连:</label>
+          <label class="chk-label"><input type="checkbox" id="setting-auto-reconnect" checked /> <span data-i18n="settings.enable">启用</span></label>
+          <span class="label" style="margin:0 4px" data-i18n="settings.reconnectInterval">间隔:</span>
+          <input type="number" id="setting-reconnect-interval" value="1000" min="100" max="30000" step="100" class="small-input" style="width:80px" />
+          <span class="label" style="margin:0 4px" data-i18n="settings.ms">ms</span>
+        </div>
+        <div class="setting-row">
           <label data-i18n="settings.mcp">MCP 服务:</label>
           <label class="chk-label"><input type="checkbox" id="setting-mcp-enabled" /> <span data-i18n="settings.enable">启用</span></label>
           <span class="label" style="margin-left:12px" data-i18n="settings.port">端口:</span>
