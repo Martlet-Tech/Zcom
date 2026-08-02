@@ -487,6 +487,9 @@ select:focus, input:focus, textarea:focus {
   padding: 0 4px;
   line-height: 20px;    /* must match #receive-area line-height */
 }
+.receive-line .marker {
+  color: var(--receive-marker, var(--receive-color));
+}
 .receive-line:hover {
   background: rgba(255,255,255,0.03);
 }

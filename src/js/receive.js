@@ -88,12 +88,33 @@ function clearFilter() {
   applyFilter();
 }
 
-function createFoldBadge(text, count) {
+function buildLineEl(marker, text) {
+  const line = document.createElement('div');
+  line.className = 'receive-line';
+  if (marker) {
+    const m = document.createElement('span');
+    m.className = 'marker';
+    m.textContent = marker;
+    line.appendChild(m);
+    line.dataset.marker = marker;
+  }
+  line.appendChild(document.createTextNode(text));
+  return line;
+}
+
+function createFoldBadge(marker, text, count) {
   const badge = document.createElement('div');
   badge.className = 'receive-line fold-badge';
+  if (marker) badge.dataset.marker = marker;
   const textSpan = document.createElement('span');
   textSpan.className = 'fold-text';
-  textSpan.textContent = text;
+  if (marker) {
+    const m = document.createElement('span');
+    m.className = 'marker';
+    m.textContent = marker;
+    textSpan.appendChild(m);
+  }
+  textSpan.appendChild(document.createTextNode(text));
   const countSpan = document.createElement('span');
   countSpan.className = 'fold-count';
   countSpan.textContent = ` [×${count}]`;
@@ -109,13 +130,13 @@ function createFoldBadge(text, count) {
 
 function expandFold(badge) {
   const text = badge.querySelector('.fold-text').textContent;
+  const marker = badge.dataset.marker || null;
+  const content = marker ? text.slice(marker.length) : text;
   const match = badge.querySelector('.fold-count').textContent.match(/×(\d+)/);
   if (!match) return;
   const count = parseInt(match[1]);
   for (let i = 0; i < count; i++) {
-    const line = document.createElement('div');
-    line.className = 'receive-line';
-    line.textContent = text;
+    const line = buildLineEl(marker, content);
     if (filterText && !matchesFilter(text)) {
       line.style.display = 'none';
     }
@@ -194,6 +215,8 @@ function foldConsecutiveBelow(badge) {
 function foldFromElement(element) {
   const raw = stripTimestamp(element.textContent);
   const text = element.textContent;
+  const marker = element.dataset.marker || null;
+  const content = marker ? text.slice(marker.length) : text;
   const siblings = [element];
   let next = element.nextElementSibling;
   while (next) {
@@ -204,7 +227,7 @@ function foldFromElement(element) {
   }
   if (siblings.length < 2) return;
   for (const el of siblings) el.remove();
-  const badge = createFoldBadge(text, siblings.length - 1);
+  const badge = createFoldBadge(marker, content, siblings.length - 1);
   if (next && next.parentNode) {
     next.parentNode.insertBefore(badge, next);
   } else {
@@ -320,11 +343,11 @@ function initFilter() {
   });
 }
 
-function appendLine(text) {
+function appendLine(text, marker) {
   if (!receiveContent) return;
 
   if (foldEnabled) {
-    const raw = stripTimestamp(text);
+    const raw = stripTimestamp(marker ? marker + text : text);
 
     if (foldActive && foldBadge) {
       if (raw === foldText) {
@@ -347,7 +370,7 @@ function appendLine(text) {
           const last = receiveContent.lastElementChild;
           if (last) last.remove();
         }
-        const badge = createFoldBadge(text, repeatCount);
+        const badge = createFoldBadge(marker, text, repeatCount);
         receiveContent.appendChild(badge);
         mcpBuffer.push(badge.textContent);
         foldActive = true;
@@ -363,9 +386,7 @@ function appendLine(text) {
     }
   }
 
-  const line = document.createElement('div');
-  line.className = 'receive-line';
-  line.textContent = text;
+  const line = buildLineEl(marker, text);
   if (filterText && !matchesFilter(text)) {
     line.style.display = 'none';
   }
@@ -400,7 +421,7 @@ const layout = new FrameLayout();
 function appendToOpenLine(text) {
   if (!receiveContent) return;
   if (openLine && openLine.isConnected) {
-    if (text) openLine.textContent += text;
+    if (text) openLine.appendChild(document.createTextNode(text));
     mcpBuffer.push(text);
     if (filterText) {
       openLine.style.display = matchesFilter(openLine.textContent) ? '' : 'none';
@@ -420,7 +441,7 @@ function applyLayoutActions(actions) {
     if (a.type === 'append') {
       appendToOpenLine(a.text);
     } else {
-      lastLine = appendLine(a.text) || null;
+      lastLine = appendLine(a.text, a.marker) || null;
     }
   }
   if (!layout.open) {
@@ -465,10 +486,11 @@ export async function appendData(bytes, direction) {
 
 function appendSentText(text) {
   if (!echoEnabled) return;
+  let prefix = null;
   if (echoPrefix) {
-    text = showTimestamp ? `[T-${timestamp()}]${text}` : `[T]${text}`;
+    prefix = showTimestamp ? `[T-${timestamp()}]` : '[T]';
   }
-  appendLine(text);
+  appendLine(text, prefix);
 }
 
 export async function initReceive() {
@@ -608,6 +630,21 @@ export function setShowTimestamp(v) {
   showTimestamp = v;
 }
 
+function averageColor(fg, bg) {
+  const parse = (hex) => {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+    if (!m) return null;
+    const n = parseInt(m[1], 16);
+    return [n >> 16 & 255, n >> 8 & 255, n & 255];
+  };
+  const f = parse(fg);
+  const b = parse(bg);
+  if (!f || !b) return null;
+  return '#' + f.map((v, i) =>
+    Math.round((v + b[i]) / 2).toString(16).padStart(2, '0')
+  ).join('');
+}
+
 export function applyReceiveStyle(settings) {
   if (!receiveArea) return;
   receiveArea.style.fontFamily = settings.receiveFont || 'Consolas';
@@ -616,4 +653,6 @@ export function applyReceiveStyle(settings) {
   if (settings.bgColor) {
     receiveArea.style.backgroundColor = settings.bgColor;
   }
+  const avg = averageColor(settings.receiveColor, settings.bgColor);
+  if (avg) receiveArea.style.setProperty('--receive-marker', avg);
 }
