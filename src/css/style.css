@@ -600,6 +600,8 @@ select:focus, input:focus, textarea:focus {
   flex: 1;
   position: relative;
   height: 26px;
+  display: flex;
+  align-items: center;
 }
 .file-path-input {
   width: 100%;
@@ -1155,6 +1157,8 @@ select:focus, input:focus, textarea:focus {
 /* ===== View Menu ===== */
 .view-menu {
   position: relative;
+  display: flex;
+  align-items: center;
   user-select: none;
   outline: none;
 }
