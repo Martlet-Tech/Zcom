@@ -1,9 +1,9 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { listen } from '@tauri-apps/api/event';
+import { listen, emit } from '@tauri-apps/api/event';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { writeTextFile, readTextFile } from '@tauri-apps/plugin-fs';
-import { parseHexString, getSettings } from './utils.js';
+import { parseHexString, bytesToHex, getSettings } from './utils.js';
 import { initIcons, createElement, GripVertical, X } from './icons.js';
 import { Keybindings } from './keybindings.js';
 import { t, setLang, applyI18n, detectLang } from './i18n.js';
@@ -262,6 +262,20 @@ async function sendItem(item) {
   try {
     const s = await getSettings();
     const encoding = s.encoding || 'utf-8';
+    // Echo into the MAIN window's debug view via a cross-window Tauri event
+    // (CustomEvent cannot cross webview boundaries). Same semantics as the
+    // send box: hex sends echo the actual bytes (no re-encoding).
+    if (item.hex) {
+      let echo = item.text;
+      try {
+        echo = bytesToHex(parseHexString(item.text));
+      } catch (e) {
+        /* keep raw input as echo */
+      }
+      emit('send-echo', { text: echo, isHex: true }).catch(() => {});
+    } else {
+      emit('send-echo', { text: item.text }).catch(() => {});
+    }
     await invoke('send_data_raw', { data: item.text, hexMode: item.hex, encoding });
   } catch (e) {
     console.error('Multi send error:', e);

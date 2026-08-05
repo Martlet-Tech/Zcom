@@ -526,6 +526,11 @@ export async function initReceive() {
     appendSentText(e.detail.text, e.detail.isHex === true);
   });
 
+  // Cross-window echo from the multi-string window (Tauri event broadcast).
+  listen('send-echo', (e) => {
+    appendSentText(e.payload.text, e.payload.isHex === true);
+  });
+
   document.addEventListener('terminal-input-echo', (e) => {
     const marker = echoPrefix ? (showTimestamp ? `[T-${timestamp()}]` : '[T]') : null;
     appendEchoFrame(e.detail.text, marker, false);
