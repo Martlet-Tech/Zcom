@@ -8,7 +8,11 @@ let term = null;
 let fitAddon = null;
 let termZoom = null;
 let baseFontSize = 14;
+let localEcho = true;
 
+/// Creates the terminal once. It stays alive forever; visibility is controlled
+/// separately via setTerminalVisible (terminal = primary data path, debug view
+/// is just a mirror).
 export function createTerminal(settings) {
   if (term) return;
 
@@ -29,16 +33,38 @@ export function createTerminal(settings) {
   term.loadAddon(fitAddon);
 
   const container = document.getElementById('terminal-container');
-  container.classList.remove('hidden');
   term.open(container);
   termZoom = new TerminalZoom(container, term, baseFontSize);
 
-  requestAnimationFrame(() => fitAddon.fit());
+  localEcho = settings.echoEnabled !== false;
 
   term.onData((data) => {
     const bytes = Array.from(new TextEncoder().encode(data));
     invoke('send_raw_bytes', { bytes }).catch(() => {});
+    if (localEcho) {
+      termWrite(data);
+      document.dispatchEvent(new CustomEvent('terminal-input-echo', { detail: { text: data } }));
+    }
   });
+
+  document.addEventListener('settings-applied', (e) => {
+    localEcho = e.detail.echoEnabled !== false;
+  });
+  document.addEventListener('echo-enabled-change', (e) => {
+    localEcho = e.detail.on;
+  });
+
+  requestAnimationFrame(() => termFit());
+}
+
+/// Shows/hides the terminal container (mode switch = visibility only).
+export function setTerminalVisible(visible) {
+  const container = document.getElementById('terminal-container');
+  if (!container) return;
+  container.classList.toggle('hidden', !visible);
+  if (visible) {
+    requestAnimationFrame(() => termFit());
+  }
 }
 
 export function destroyTerminal() {
@@ -49,8 +75,6 @@ export function destroyTerminal() {
     term = null;
     fitAddon = null;
   }
-  const container = document.getElementById('terminal-container');
-  if (container) container.classList.add('hidden');
 }
 
 export function termWrite(text) {

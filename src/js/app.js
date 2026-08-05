@@ -4,7 +4,7 @@ import { listen } from '@tauri-apps/api/event';
 import { initTitlebar } from './titlebar.js';
 import { initMenu, initHelpMenu } from './menu.js';
 import { initReceive, clearReceive, setHexDisplay, setShowTimestamp, applyReceiveStyle, isTerminalMode, setTerminalMode } from './receive.js';
-import { createTerminal, destroyTerminal, termFit } from './terminal.js';
+import { createTerminal, termFit, setTerminalVisible } from './terminal.js';
 import { initBottom } from './bottom.js';
 import { initStatusBar } from './statusbar.js';
 import { initViewMenu } from './view.js';
@@ -33,6 +33,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   await initViewMenu();
   await initSettings();
 
+  // Terminal is the primary data path: created once at startup and kept
+  // alive forever. Mode switching only toggles which view is visible.
+  createTerminal(settings);
+
   function applyTerminalUI(isTerminal) {
     const ids = ['send-drag-handle', 'send-area', 'file-ops', 'checksum-area', 'filter-bar', 'receive-area'];
     ids.forEach(id => {
@@ -49,9 +53,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.querySelectorAll('.mode-btn').forEach(b =>
       b.classList.toggle('active', b.dataset.mode === (isTerminal ? 'terminal' : 'standard')));
+
+    setTerminalVisible(isTerminal);
   }
 
-  // Mode switch handler
+  // Mode switch handler: visibility only, data keeps flowing to both views.
   document.querySelectorAll('.mode-btn').forEach(btn => {
     btn.addEventListener('click', async () => {
       const newMode = btn.dataset.mode;
@@ -60,20 +66,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       const s = await getSettings();
       setTerminalMode(isTerminal);
       applyTerminalUI(isTerminal);
-
-      if (isTerminal) {
-        createTerminal(s);
-      } else {
-        destroyTerminal();
-      }
-
       await patchSettings({ mode: newMode });
     });
   });
 
   // Apply initial mode
   if (mode === 'terminal') {
-    createTerminal(settings);
     setTerminalMode(true);
     applyTerminalUI(true);
   }
@@ -82,11 +80,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   listen('clear-receive', clearReceive);
 
   document.addEventListener('open-monitor', async () => {
-    const s = await getSettings();
-    setTerminalMode(true);
-    applyTerminalUI(true);
-    createTerminal(s);
-    await patchSettings({ mode: 'terminal' });
+    // After flashing, stay in the standard receive view for monitoring.
+    // The terminal stays alive in the background and keeps recording.
+    if (isTerminalMode) {
+      setTerminalMode(false);
+      applyTerminalUI(false);
+      await patchSettings({ mode: 'standard' });
+    }
   });
 
   document.addEventListener('hex-display-change', (e) => {

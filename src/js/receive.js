@@ -454,18 +454,17 @@ function applyLayoutActions(actions) {
 export async function appendData(bytes, direction) {
   lastDirection = direction;
 
-  if (isTerminalMode) {
-    let text;
-    try {
-      text = await invoke('decode_bytes', { bytes, encoding });
-    } catch {
-      text = new TextDecoder('utf-8', { fatal: false }).decode(new Uint8Array(bytes));
-    }
-    termWrite(text);
-    mcpBuffer.push(text);
-    return;
+  let text;
+  try {
+    text = await invoke('decode_bytes', { bytes, encoding });
+  } catch {
+    text = new TextDecoder('utf-8', { fatal: false }).decode(new Uint8Array(bytes));
   }
 
+  // Terminal is the primary data path: always feed it, regardless of mode.
+  termWrite(text);
+
+  // Debug view is the mirror: line-based pipeline (timestamps/fold/hex).
   const ts = `[${direction}-${timestamp()}]`;
 
   if (hexDisplay) {
@@ -473,18 +472,21 @@ export async function appendData(bytes, direction) {
     return;
   }
 
-  let text;
-  try {
-    text = await invoke('decode_bytes', { bytes, encoding });
-  } catch {
-    text = new TextDecoder('utf-8', { fatal: false }).decode(new Uint8Array(bytes));
-  }
   if (!text) return;
-
   applyLayoutActions(layout.push(text, { timestamp: showTimestamp, ts }));
 }
 
 function appendSentText(text) {
+  if (!echoEnabled) return;
+  termWrite(text);
+  let prefix = null;
+  if (echoPrefix) {
+    prefix = showTimestamp ? `[T-${timestamp()}]` : '[T]';
+  }
+  appendLine(text, prefix);
+}
+
+export function appendTerminalEcho(text) {
   if (!echoEnabled) return;
   let prefix = null;
   if (echoPrefix) {
@@ -532,6 +534,10 @@ export async function initReceive() {
 
   document.addEventListener('send-echo', (e) => {
     appendSentText(e.detail.text);
+  });
+
+  document.addEventListener('terminal-input-echo', (e) => {
+    appendTerminalEcho(e.detail.text);
   });
 
   document.addEventListener('encoding-change', (e) => {
@@ -598,11 +604,8 @@ function clearReceiveLines() {
 
 export async function clearReceive() {
   await flushMcp();
-  if (isTerminalMode) {
-    clearTerminal();
-  } else {
-    clearReceiveLines();
-  }
+  clearReceiveLines();
+  clearTerminal();
   invoke('mcp_clear_buffer').catch(() => {});
   invoke('reset_io_counters').catch(() => {});
 }
