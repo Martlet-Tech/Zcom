@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { timestamp, bytesToHex, getSettings } from './utils.js';
+import { timestamp, bytesToHex, getSettings, decodeDisplay } from './utils.js';
 import { termWrite, clearTerminal } from './terminal.js';
 import { t } from './i18n.js';
 import { ReceiveZoom } from './zoom.js';
@@ -38,6 +38,7 @@ let prevFrameRaw = '';
 
 let openFrame = null;
 let frameText = '';
+let framePure = '';   // pure decoded text of the current frame (MCP buffer)
 
 let contextMenu = null;
 
@@ -370,12 +371,14 @@ function applyFrameActions(actions) {
         openFrame = buildFrameEl(a.marker, '');
         receiveContent.appendChild(openFrame);
         frameText = '';
+        framePure = '';
       }
     } else if (a.type === 'frame-append') {
       if (!openFrame) {
         openFrame = buildFrameEl(null, '');
         receiveContent.appendChild(openFrame);
         frameText = '';
+        framePure = '';
       }
       openFrame.appendChild(document.createTextNode(a.text));
       frameText += a.text;
@@ -393,8 +396,10 @@ function finalizeFrame() {
   if (!openFrame) return;
   const line = openFrame;
   const raw = frameText;
+  const pure = framePure;
   openFrame = null;
   frameText = '';
+  framePure = '';
 
   if (foldEnabled) {
     if (foldActive && foldBadge && raw === foldText) {
@@ -420,7 +425,7 @@ function finalizeFrame() {
         const badge = createFoldBadge(marker, raw, frameRepeat);
         receiveContent.appendChild(badge);
         for (let i = 0; i < frameRepeat - 1; i++) mcpBuffer.pop();
-        mcpBuffer.push(badge.textContent);
+        mcpBuffer.push(pure);
         foldActive = true;
         foldText = raw;
         foldCount = frameRepeat;
@@ -436,7 +441,7 @@ function finalizeFrame() {
   prevFrameRaw = raw;
 
   if (filterText && !matchesFilter(raw)) line.style.display = 'none';
-  mcpBuffer.push(raw);
+  mcpBuffer.push(pure);
   evictIfNeeded();
   if (autoScroll) receiveArea.scrollTop = receiveArea.scrollHeight;
 }
@@ -450,12 +455,14 @@ function appendEchoFrame(text, marker, alreadyHex = false) {
   if (!echoEnabled) return;
   const display = alreadyHex
     ? text
-    : (hexDisplay ? bytesToHex(Array.from(new TextEncoder().encode(text))) : text);
+    : (hexDisplay
+      ? bytesToHex(Array.from(new TextEncoder().encode(text)))
+      : decodeDisplay(Array.from(new TextEncoder().encode(text)), encoding));
   const line = buildFrameEl(marker, '');
   receiveContent.appendChild(line);
   line.appendChild(document.createTextNode(display));
   if (filterText && !matchesFilter(display)) line.style.display = 'none';
-  mcpBuffer.push(display);
+  mcpBuffer.push(text);
   evictIfNeeded();
   if (autoScroll) receiveArea.scrollTop = receiveArea.scrollHeight;
 }
@@ -472,12 +479,17 @@ export async function appendData({ bytes, frameEnd }, direction) {
   termWrite(text);
 
   // Debug view is the mirror: one frame = one div, raw content, long frames
-  // are flushed progressively (256B chunks, see FrameLayout).
-  // Direction marker is decoupled from the timestamp toggle: [R] / [T]
-  // always shown, timestamps append the time when enabled.
+  // are flushed progressively (256B chunks, see FrameLayout). Display form
+  // (hex / control pictures / CP437) is a frontend-only concern — the MCP
+  // buffer receives the pure decoded text.
   const marker = showTimestamp ? `[${direction}-${timestamp()}]` : '[R]';
-  const frameText = hexDisplay ? bytesToHex(bytes) : text;
-  applyFrameActions(layout.push(frameText, { frameEnd: !!frameEnd, marker }));
+  const actions = layout.push(
+    hexDisplay ? bytesToHex(bytes) : decodeDisplay(bytes, encoding),
+    { frameEnd: !!frameEnd, marker },
+  );
+  if (actions.some(a => a.type === 'frame-start')) framePure = '';
+  framePure += text;
+  applyFrameActions(actions);
 }
 
 function appendSentText(text, isHex) {
@@ -585,6 +597,7 @@ function clearReceiveLines() {
   }
   openFrame = null;
   frameText = '';
+  framePure = '';
   layout.reset();
   foldActive = false;
   foldBadge = null;
