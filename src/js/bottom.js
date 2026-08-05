@@ -265,10 +265,33 @@ export async function initBottom() {
     }
   }
 
+  // Walk up from the selected CMakeLists.txt until a directory whose
+  // CMakeLists.txt contains a top-level `project(...)` statement is found
+  // (the ESP-IDF project root, as opposed to a component dir like `main`).
+  async function findProjectDir(cmPath) {
+    let dir = cmPath.replace(/[\\/][^\\/]*$/, '');
+    for (let i = 0; i < 10; i++) {
+      try {
+        const cm = await readTextFile(`${dir}\\CMakeLists.txt`);
+        if (/project\s*\(/i.test(cm)) return dir;
+      } catch (e) {
+        return null;
+      }
+      const parent = dir.replace(/[\\/][^\\/]*$/, '');
+      if (parent === dir) return null;
+      dir = parent;
+    }
+    return null;
+  }
+
   async function flashFlow() {
     const filePath = filePathEl.value.trim();
     if (!filePath || espBusy) return;
-    const projectDir = filePath.replace(/[\\/][^\\/]*$/, '');
+    const projectDir = await findProjectDir(filePath);
+    if (!projectDir) {
+      alert(t('esp.needProject'));
+      return;
+    }
 
     const s = await getSettings();
     if (!s.espIdfPath) {

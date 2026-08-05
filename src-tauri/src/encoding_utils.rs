@@ -25,6 +25,15 @@ fn decode_oem_text(bytes: &[u8]) -> String {
     }
 }
 
+/// Decodes console/CMD output: valid UTF-8 is used as-is, otherwise falls back
+/// to the OEM code page (GBK etc.) so localized cmd errors are not lost.
+pub(crate) fn decode_console_text(bytes: &[u8]) -> String {
+    match std::str::from_utf8(bytes) {
+        Ok(s) => s.to_string(),
+        Err(_) => decode_oem_text(bytes),
+    }
+}
+
 pub(crate) fn encode_text(text: &str, encoding: &str) -> Vec<u8> {
     match encoding {
         "gbk" => {

@@ -95,6 +95,9 @@
   },
   "settings": {
     "title": "系统设置",
+    "tabDisplay": "系统显示",
+    "tabComms": "收发",
+    "tabIdf": "IDF",
     "language": "界面语言:",
     "theme": "界面配色:",
     "dark": "深色",
@@ -128,17 +131,31 @@
     "espIdf": "ESP-IDF 路径:",
     "espPython": "Python 路径(可空):",
     "espBaud": "烧录波特率:",
-    "espDetect": "自动探测"
+    "espDetect": "自动探测",
+    "espBrowse": "浏览…",
+    "espCheck": "检查"
   },
   "esp": {
     "buildTitle": "ESP-IDF Build + Flash",
     "flashMonitor": "Flash+Monitor",
     "needConfig": "请先在系统设置里配置 ESP-IDF 路径",
     "needPort": "请先选择串口",
+    "needProject": "找不到工程根目录：请选择含 project() 的 CMakeLists.txt（如工程根目录的，而不是 main 组件下的）",
     "running": "烧录中...",
     "cancelling": "正在取消...",
     "done": "完成, 芯片已复位运行",
-    "failed": "失败: {stage}"
+    "failed": "失败: {stage}",
+    "checkTitle": "路径检查",
+    "checkUsable": "✓ 环境可用",
+    "checkUnusable": "✗ 环境不可用，见下方详情",
+    "checking": "检查中...",
+    "copyResult": "复制结果",
+    "chkIdfDir": "IDF 目录存在",
+    "chkIdfPy": "tools\\idf.py 存在",
+    "chkExportBat": "export.bat 存在",
+    "chkActivate": "tools\\activate.py 存在",
+    "chkPython": "Python 环境",
+    "chkProbe": "环境实弹探针"
   },
   "serialSettings": {
     "title": "串口详细设置",

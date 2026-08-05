@@ -767,6 +767,47 @@ select:focus, input:focus, textarea:focus {
   color: var(--danger);
 }
 
+/* ===== ESP path check result ===== */
+.esp-check-result {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg2);
+  font-size: 12px;
+  line-height: 1.6;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.esp-check-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.esp-check-result .esp-check-status {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.esp-check-status.ok { color: #4caf50; }
+.esp-check-status.bad { color: var(--danger); }
+.esp-check-row {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.esp-check-row.ok { color: var(--fg); }
+.esp-check-row.bad { color: var(--danger); }
+.esp-check-row .esp-check-detail {
+  color: var(--fg-dim);
+  font-family: Consolas, monospace;
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin-left: 14px;
+}
+
 /* ===== Status Bar ===== */
 #status-bar {
   display: flex;
@@ -838,6 +879,30 @@ select:focus, input:focus, textarea:focus {
 .dialog-close:hover { background: var(--danger); color: #fff; }
 .dialog-body {
   padding: 16px;
+}
+.settings-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 10px 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.settings-tab {
+  padding: 5px 16px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 5px 5px 0 0;
+  color: var(--fg-dim);
+  font-size: 13px;
+  cursor: pointer;
+}
+.settings-tab:hover {
+  color: var(--fg);
+}
+.settings-tab.active {
+  color: var(--fg);
+  background: var(--bg2);
+  border-color: var(--border);
 }
 .dialog-footer {
   display: flex;

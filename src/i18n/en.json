@@ -95,6 +95,9 @@
   },
   "settings": {
     "title": "System Settings",
+    "tabDisplay": "Display",
+    "tabComms": "Send/Recv",
+    "tabIdf": "IDF",
     "language": "Language:",
     "theme": "Theme:",
     "dark": "Dark",
@@ -128,17 +131,31 @@
     "espIdf": "ESP-IDF path:",
     "espPython": "Python path (optional):",
     "espBaud": "Flash baud rate:",
-    "espDetect": "Auto detect"
+    "espDetect": "Auto detect",
+    "espBrowse": "Browse…",
+    "espCheck": "Check"
   },
   "esp": {
     "buildTitle": "ESP-IDF Build + Flash",
     "flashMonitor": "Flash+Monitor",
     "needConfig": "Configure ESP-IDF path in Settings first",
     "needPort": "Select a serial port first",
+    "needProject": "Project root not found: pick the CMakeLists.txt containing project() (the root one, not the one under main/)",
     "running": "Flashing...",
     "cancelling": "Cancelling...",
     "done": "Done, chip reset & running",
-    "failed": "Failed: {stage}"
+    "failed": "Failed: {stage}",
+    "checkTitle": "Path check",
+    "checkUsable": "✓ Environment usable",
+    "checkUnusable": "✗ Environment not usable, see details",
+    "checking": "Checking...",
+    "copyResult": "Copy result",
+    "chkIdfDir": "IDF directory exists",
+    "chkIdfPy": "tools\\idf.py exists",
+    "chkExportBat": "export.bat exists",
+    "chkActivate": "tools\\activate.py exists",
+    "chkPython": "Python environment",
+    "chkProbe": "Environment probe"
   },
   "serialSettings": {
     "title": "Serial Port Settings",

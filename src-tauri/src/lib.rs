@@ -107,6 +107,7 @@ pub fn run() {
             esp_cmd::esp_flash_cancel,
             esp_cmd::esp_reset,
             esp_cmd::detect_esp_paths,
+            esp_cmd::esp_check_paths,
             multi_string::open_multi_string_window,
             multi_string::load_multi_strings,
             multi_string::save_multi_strings,

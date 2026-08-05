@@ -162,7 +162,13 @@
         <span data-i18n="settings.title">系统设置</span>
         <button class="dialog-close title-btn"><i data-lucide="x"></i></button>
       </div>
+      <div class="settings-tabs">
+        <button class="settings-tab active" data-tab="display" data-i18n="settings.tabDisplay">系统显示</button>
+        <button class="settings-tab" data-tab="comms" data-i18n="settings.tabComms">收发</button>
+        <button class="settings-tab" data-tab="idf" data-i18n="settings.tabIdf">IDF</button>
+      </div>
       <div class="dialog-body">
+        <div class="settings-pane" data-pane="display">
         <div class="setting-row">
           <label data-i18n="settings.language">界面语言:</label>
           <select id="setting-language" class="small-select">
@@ -205,6 +211,16 @@
           <input type="color" id="setting-bg-color" value="#1a1a2e" />
         </div>
         <div class="setting-row">
+          <label data-i18n="settings.closeBehavior">关闭行为:</label>
+          <div class="segmented" data-setting="closeBehavior">
+            <button class="segmented-btn" data-value="minimize" data-i18n="settings.hideToTray">隐藏到托盘</button>
+            <button class="segmented-btn active" data-value="ask" data-i18n="settings.ask">询问</button>
+            <button class="segmented-btn" data-value="close" data-i18n="common.close">关闭</button>
+          </div>
+        </div>
+        </div>
+        <div class="settings-pane hidden" data-pane="comms">
+        <div class="setting-row">
           <label data-i18n="settings.sendNewline">发送区换行:</label>
           <div class="segmented" data-setting="sendNewline">
             <button class="segmented-btn active" data-value="raw" data-i18n="settings.raw">原始</button>
@@ -240,14 +256,6 @@
           <input type="number" id="setting-fold-count" value="5" min="2" max="100" class="small-input" />
         </div>
         <div class="setting-row">
-          <label data-i18n="settings.closeBehavior">关闭行为:</label>
-          <div class="segmented" data-setting="closeBehavior">
-            <button class="segmented-btn" data-value="minimize" data-i18n="settings.hideToTray">隐藏到托盘</button>
-            <button class="segmented-btn active" data-value="ask" data-i18n="settings.ask">询问</button>
-            <button class="segmented-btn" data-value="close" data-i18n="common.close">关闭</button>
-          </div>
-        </div>
-        <div class="setting-row">
           <label data-i18n="settings.autoReconnect">自动重连:</label>
           <label class="chk-label"><input type="checkbox" id="setting-auto-reconnect" checked /> <span data-i18n="settings.enable">启用</span></label>
           <span class="label" style="margin:0 4px" data-i18n="settings.reconnectInterval">间隔:</span>
@@ -260,25 +268,31 @@
           <span class="label" style="margin-left:12px" data-i18n="settings.port">端口:</span>
           <input type="number" id="setting-mcp-port" value="9876" min="1024" max="65535" class="small-input" style="width:80px" />
         </div>
+        </div>
+        <div class="settings-pane hidden" data-pane="idf">
         <div class="setting-row">
           <label data-i18n="settings.espIdf">ESP-IDF 路径:</label>
           <input type="text" id="setting-esp-idf" class="file-path-input" list="esp-idf-datalist" spellcheck="false" placeholder="D:\...\esp-idf" />
           <datalist id="esp-idf-datalist"></datalist>
+          <button id="btn-esp-browse-idf" class="small-btn" data-i18n="settings.espBrowse">浏览…</button>
           <button id="btn-esp-detect" class="small-btn" data-i18n="settings.espDetect">自动探测</button>
+          <button id="btn-esp-check" class="small-btn primary" data-i18n="settings.espCheck">检查</button>
         </div>
         <div class="setting-row">
           <label data-i18n="settings.espPython">Python 路径(可空):</label>
           <input type="text" id="setting-esp-python" class="file-path-input" list="esp-python-datalist" spellcheck="false" placeholder="...python_env\...\python.exe" />
           <datalist id="esp-python-datalist"></datalist>
+          <button id="btn-esp-browse-py" class="small-btn" data-i18n="settings.espBrowse">浏览…</button>
         </div>
         <div class="setting-row">
           <label data-i18n="settings.espBaud">烧录波特率:</label>
           <input type="number" id="setting-esp-baud" class="small-input" style="width:90px" value="921600" min="0" max="3000000" />
           <span class="label" style="margin:0 4px" data-i18n="settings.ms">bps</span>
         </div>
+        <div id="esp-check-result" class="esp-check-result hidden"></div>
+        </div>
       </div>
       <div class="dialog-footer">
-        <button id="setting-apply" class="small-btn primary" data-i18n="common.apply">应用</button>
         <button id="setting-close" class="small-btn" data-i18n="common.close">关闭</button>
       </div>
     </div>
