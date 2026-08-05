@@ -348,6 +348,50 @@ export function initMenu() {
     applyConnUI();
   })();
 
+  // After a frontend reload (HMR / webview refresh) the FSM resets to
+  // DISCONNECTED, but the backend may still hold an open connection.
+  // Adopt the backend's actual state so the UI shows connected again.
+  (async () => {
+    try {
+      const info = await invoke('get_port_info');
+      if (!info.connected) return;
+      const p = { portName: info.name || null, baud: info.baud || 0 };
+      transition(PortEvent.OPEN_START, p);
+      if (info.reconnecting) {
+        transition(PortEvent.DEVICE_LOST);
+      } else {
+        transition(PortEvent.OPEN_OK);
+        showToast(`已恢复连接: ${info.name || '网络'}`, 'ok');
+      }
+      if (info.name) {
+        currentPort = info.name;
+        comText.textContent = info.name;
+        await patchSettings({ currentPort: info.name });
+      }
+      if (info.baud) {
+        baudRate = info.baud;
+        updateBaudSelection(baudRate);
+      }
+      if (connType === 'serial' || connType === 'idf') {
+        refresh();
+      }
+    } catch (e) {
+      console.warn('adopt backend state:', e);
+    }
+  })();
+
+  function showToast(msg, kind) {
+    const el = document.createElement('div');
+    el.className = `toast ${kind || ''}`;
+    el.textContent = msg;
+    document.body.appendChild(el);
+    requestAnimationFrame(() => el.classList.add('show'));
+    setTimeout(() => {
+      el.classList.remove('show');
+      setTimeout(() => el.remove(), 400);
+    }, 2500);
+  }
+
   comEl.addEventListener('click', (e) => {
     if (e.target.closest('.cs-dropdown')) return;
     toggleComDropdown();

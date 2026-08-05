@@ -187,6 +187,13 @@ enum NetReadEnd {
     Lost,
 }
 
+fn emit_serial_data(app: &tauri::AppHandle, data: Vec<u8>, frame_end: bool) {
+    let _ = app.emit(
+        "serial-data",
+        serde_json::json!({ "bytes": data, "frameEnd": frame_end }),
+    );
+}
+
 fn stream_read_loop(
     stream: &mut TcpStream,
     state: &NetState,
@@ -200,7 +207,7 @@ fn stream_read_loop(
     loop {
         if state.stop_reading.load(Ordering::SeqCst) || stale(state, gen) {
             if !acc.is_empty() {
-                let _ = app.emit("serial-data", acc.clone());
+                emit_serial_data(app, acc.clone(), true);
             }
             return NetReadEnd::Stopped;
         }
@@ -211,7 +218,7 @@ fn stream_read_loop(
                 state.rx_bytes.fetch_add(n as u64, Ordering::SeqCst);
                 if acc.len() >= 4096 {
                     let data = std::mem::take(&mut acc);
-                    let _ = app.emit("serial-data", data);
+                    emit_serial_data(app, data, false);
                 }
             }
             Ok(0) => {
@@ -221,7 +228,7 @@ fn stream_read_loop(
             Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => {
                 if !acc.is_empty() && last_time.elapsed() >= GAP_TIMEOUT {
                     let data = std::mem::take(&mut acc);
-                    let _ = app.emit("serial-data", data);
+                    emit_serial_data(app, data, true);
                 }
                 std::thread::sleep(Duration::from_millis(10));
             }
@@ -401,7 +408,7 @@ fn udp_read_loop(state: NetState, app: tauri::AppHandle, gen: u32) {
                     }
                 }
                 state.rx_bytes.fetch_add(n as u64, Ordering::SeqCst);
-                let _ = app.emit("serial-data", buf[..n].to_vec());
+                emit_serial_data(&app, buf[..n].to_vec(), true);
             }
             Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => {}
             Err(_) => {

@@ -17,7 +17,7 @@ let echoEnabled = true;
 let echoPrefix = true;
 let receiveContent = null;
 let receiveArea = null;
-const MAX_LINES = 10000;
+const MAX_FRAMES = 10000;
 
 let filterText = '';
 let filterCaseSensitive = false;
@@ -35,8 +35,15 @@ let foldText = '';
 let foldCount = 0;
 let foldBadge = null;
 
-let repeatCount = 0;
-let prevRaw = '';
+let frameRepeat = 0;
+let prevFrameRaw = '';
+
+let openFrame = null;
+let frameText = '';
+
+let openEchoFrame = null;
+let echoText = '';
+let echoTimer = null;
 
 let contextMenu = null;
 
@@ -88,9 +95,9 @@ function clearFilter() {
   applyFilter();
 }
 
-function buildLineEl(marker, text) {
+function buildFrameEl(marker, text) {
   const line = document.createElement('div');
-  line.className = 'receive-line';
+  line.className = 'receive-line frame';
   if (marker) {
     const m = document.createElement('span');
     m.className = 'marker';
@@ -99,6 +106,10 @@ function buildLineEl(marker, text) {
     line.dataset.marker = marker;
   }
   line.appendChild(document.createTextNode(text));
+  line.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    showLineContextMenu(e, line);
+  });
   return line;
 }
 
@@ -136,7 +147,7 @@ function expandFold(badge) {
   if (!match) return;
   const count = parseInt(match[1]);
   for (let i = 0; i < count; i++) {
-    const line = buildLineEl(marker, content);
+    const line = buildFrameEl(marker, content);
     if (filterText && !matchesFilter(text)) {
       line.style.display = 'none';
     }
@@ -148,8 +159,8 @@ function expandFold(badge) {
     foldBadge = null;
     foldText = '';
     foldCount = 0;
-    repeatCount = 0;
-    prevRaw = '';
+    frameRepeat = 0;
+    prevFrameRaw = '';
   }
 }
 
@@ -343,115 +354,129 @@ function initFilter() {
   });
 }
 
-function appendLine(text, marker) {
-  if (!receiveContent) return;
-
-  if (foldEnabled) {
-    const raw = stripTimestamp(marker ? marker + text : text);
-
-    if (foldActive && foldBadge) {
-      if (raw === foldText) {
-        foldCount++;
-        foldBadge.querySelector('.fold-count').textContent = ` [×${foldCount}]`;
-        return;
-      }
-      foldActive = false;
-      foldBadge = null;
-      foldText = '';
-      foldCount = 0;
-      repeatCount = 0;
-      prevRaw = '';
-    }
-
-    if (raw === prevRaw) {
-      repeatCount++;
-      if (repeatCount >= foldThreshold) {
-        for (let i = 0; i < foldThreshold - 1; i++) {
-          const last = receiveContent.lastElementChild;
-          if (last) last.remove();
-        }
-        const badge = createFoldBadge(marker, text, repeatCount);
-        receiveContent.appendChild(badge);
-        mcpBuffer.push(badge.textContent);
-        foldActive = true;
-        foldText = raw;
-        foldCount = repeatCount;
-        foldBadge = badge;
-        if (autoScroll) receiveArea.scrollTop = receiveArea.scrollHeight;
-        return;
-      }
-    } else {
-      repeatCount = 1;
-      prevRaw = raw;
-    }
-  }
-
-  const line = buildLineEl(marker, text);
-  if (filterText && !matchesFilter(text)) {
-    line.style.display = 'none';
-  }
-  line.addEventListener('contextmenu', (e) => {
-    e.preventDefault();
-    showLineContextMenu(e, line);
-  });
-  receiveContent.appendChild(line);
-  mcpBuffer.push(text);
-
-  while (receiveContent.children.length > MAX_LINES) {
+function evictIfNeeded() {
+  while (receiveContent.children.length > MAX_FRAMES) {
     const removed = receiveContent.removeChild(receiveContent.firstChild);
     if (removed === foldBadge) {
       foldActive = false;
       foldBadge = null;
       foldText = '';
       foldCount = 0;
-      repeatCount = 0;
-      prevRaw = '';
+      frameRepeat = 0;
     }
   }
-
-  if (autoScroll) {
-    receiveArea.scrollTop = receiveArea.scrollHeight;
-  }
-  return line;
 }
 
-let openLine = null;
 const layout = new FrameLayout();
 
-function appendToOpenLine(text) {
-  if (!receiveContent) return;
-  if (openLine && openLine.isConnected) {
-    if (text) openLine.appendChild(document.createTextNode(text));
-    mcpBuffer.push(text);
-    if (filterText) {
-      openLine.style.display = matchesFilter(openLine.textContent) ? '' : 'none';
-    }
-    if (autoScroll) {
-      receiveArea.scrollTop = receiveArea.scrollHeight;
-    }
-    return;
-  }
-  const line = appendLine(text);
-  openLine = line || null;
-}
-
-function applyLayoutActions(actions) {
-  let lastLine = null;
+function applyFrameActions(actions) {
   for (const a of actions) {
-    if (a.type === 'append') {
-      appendToOpenLine(a.text);
-    } else {
-      lastLine = appendLine(a.text, a.marker) || null;
+    if (a.type === 'frame-start') {
+      finalizeEchoFrame();
+      if (!openFrame) {
+        openFrame = buildFrameEl(a.marker, '');
+        receiveContent.appendChild(openFrame);
+        frameText = '';
+      }
+    } else if (a.type === 'frame-append') {
+      if (!openFrame) {
+        openFrame = buildFrameEl(null, '');
+        receiveContent.appendChild(openFrame);
+        frameText = '';
+      }
+      openFrame.appendChild(document.createTextNode(a.text));
+      frameText += a.text;
+      if (filterText) {
+        openFrame.style.display = matchesFilter(frameText) ? '' : 'none';
+      }
+    } else if (a.type === 'frame-end') {
+      finalizeFrame();
     }
-  }
-  if (!layout.open) {
-    openLine = null;
-  } else if (lastLine) {
-    openLine = lastLine;
   }
 }
 
-export async function appendData(bytes, direction) {
+/// Closes the current R-frame: fold/filter/mcp/eviction.
+function finalizeFrame() {
+  if (!openFrame) return;
+  const line = openFrame;
+  const raw = frameText;
+  openFrame = null;
+  frameText = '';
+
+  if (foldEnabled) {
+    if (foldActive && foldBadge && raw === foldText) {
+      foldCount++;
+      foldBadge.querySelector('.fold-count').textContent = ` [×${foldCount}]`;
+      if (mcpBuffer.length) mcpBuffer[mcpBuffer.length - 1] = foldBadge.textContent;
+      evictIfNeeded();
+      return;
+    }
+    foldActive = false;
+    foldBadge = null;
+    foldText = '';
+    foldCount = 0;
+    frameRepeat = 0;
+
+    if (raw === prevFrameRaw) {
+      frameRepeat++;
+      if (frameRepeat >= foldThreshold) {
+        for (let i = 0; i < frameRepeat - 1; i++) {
+          const last = receiveContent.lastElementChild;
+          if (last) last.remove();
+        }
+        const marker = line.dataset.marker || null;
+        const badge = createFoldBadge(marker, raw, frameRepeat);
+        receiveContent.appendChild(badge);
+        for (let i = 0; i < frameRepeat - 1; i++) mcpBuffer.pop();
+        mcpBuffer.push(badge.textContent);
+        foldActive = true;
+        foldText = raw;
+        foldCount = frameRepeat;
+        foldBadge = badge;
+        if (autoScroll) receiveArea.scrollTop = receiveArea.scrollHeight;
+        evictIfNeeded();
+        return;
+      }
+    } else {
+      frameRepeat = 1;
+    }
+  }
+  prevFrameRaw = raw;
+
+  if (filterText && !matchesFilter(raw)) line.style.display = 'none';
+  mcpBuffer.push(raw);
+  evictIfNeeded();
+  if (autoScroll) receiveArea.scrollTop = receiveArea.scrollHeight;
+}
+
+/// Closes the current input-echo frame (R-frame start or 500ms idle).
+function finalizeEchoFrame() {
+  clearTimeout(echoTimer);
+  echoTimer = null;
+  if (!openEchoFrame) return;
+  const line = openEchoFrame;
+  const raw = echoText;
+  openEchoFrame = null;
+  echoText = '';
+  if (filterText && !matchesFilter(raw)) line.style.display = 'none';
+  mcpBuffer.push(raw);
+  evictIfNeeded();
+  if (autoScroll) receiveArea.scrollTop = receiveArea.scrollHeight;
+}
+
+/// One send = one echo frame, finalized immediately. No aggregation — the
+/// echo frames mirror what was actually sent, frame by frame.
+function appendEchoFrame(text, marker) {
+  if (!echoEnabled) return;
+  finalizeEchoFrame();
+  openEchoFrame = buildFrameEl(marker, '');
+  receiveContent.appendChild(openEchoFrame);
+  echoText = text;
+  openEchoFrame.appendChild(document.createTextNode(text));
+  finalizeEchoFrame();
+}
+
+export async function appendData({ bytes, frameEnd }, direction) {
   lastDirection = direction;
 
   let text;
@@ -464,35 +489,19 @@ export async function appendData(bytes, direction) {
   // Terminal is the primary data path: always feed it, regardless of mode.
   termWrite(text);
 
-  // Debug view is the mirror: line-based pipeline (timestamps/fold/hex).
-  const ts = `[${direction}-${timestamp()}]`;
-
-  if (hexDisplay) {
-    applyLayoutActions(layout.push(bytesToHex(bytes), { hex: true }));
-    return;
-  }
-
-  if (!text) return;
-  applyLayoutActions(layout.push(text, { timestamp: showTimestamp, ts }));
+  // Debug view is the mirror: one frame = one div, raw content, long frames
+  // are flushed progressively (256B chunks, see FrameLayout).
+  // Direction marker is decoupled from the timestamp toggle: [R] / [T]
+  // always shown, timestamps append the time when enabled.
+  const marker = showTimestamp ? `[${direction}-${timestamp()}]` : '[R]';
+  const frameText = hexDisplay ? bytesToHex(bytes) : text;
+  applyFrameActions(layout.push(frameText, { frameEnd: !!frameEnd, marker }));
 }
 
 function appendSentText(text) {
   if (!echoEnabled) return;
-  termWrite(text);
-  let prefix = null;
-  if (echoPrefix) {
-    prefix = showTimestamp ? `[T-${timestamp()}]` : '[T]';
-  }
-  appendLine(text, prefix);
-}
-
-export function appendTerminalEcho(text) {
-  if (!echoEnabled) return;
-  let prefix = null;
-  if (echoPrefix) {
-    prefix = showTimestamp ? `[T-${timestamp()}]` : '[T]';
-  }
-  appendLine(text, prefix);
+  const marker = echoPrefix ? (showTimestamp ? `[T-${timestamp()}]` : '[T]') : null;
+  appendEchoFrame(text, marker);
 }
 
 export async function initReceive() {
@@ -531,13 +540,13 @@ export async function initReceive() {
   listen('serial-data', async (event) => {
     await appendData(event.payload, 'R');
   });
-
   document.addEventListener('send-echo', (e) => {
     appendSentText(e.detail.text);
   });
 
   document.addEventListener('terminal-input-echo', (e) => {
-    appendTerminalEcho(e.detail.text);
+    const marker = echoPrefix ? (showTimestamp ? `[T-${timestamp()}]` : '[T]') : null;
+    appendEchoFrame(e.detail.text, marker);
   });
 
   document.addEventListener('encoding-change', (e) => {
@@ -591,14 +600,19 @@ function clearReceiveLines() {
   if (receiveContent) {
     receiveContent.innerHTML = '';
   }
-  openLine = null;
-  layout.open = false;
+  clearTimeout(echoTimer);
+  echoTimer = null;
+  openFrame = null;
+  frameText = '';
+  openEchoFrame = null;
+  echoText = '';
+  layout.reset();
   foldActive = false;
   foldBadge = null;
   foldText = '';
   foldCount = 0;
-  repeatCount = 0;
-  prevRaw = '';
+  frameRepeat = 0;
+  prevFrameRaw = '';
   mcpBuffer = [];
 }
 

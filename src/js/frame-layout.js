@@ -1,43 +1,43 @@
+/// Frame-based layout assembler.
+///
+/// A "frame" is a physically continuous byte stream (no idle gap on the wire).
+/// The backend tags each data event with `frameEnd`: true = real frame
+/// boundary (idle gap), false = continuation of the same frame (forced chunk
+/// split). Rendering is progressive: long frames are flushed to the DOM in
+/// 256-byte increments without waiting for the frame to end.
 export class FrameLayout {
-  constructor() {
+  constructor(chunkSize = 256) {
+    this.chunkSize = chunkSize;
     this.open = false;
+    this.pending = '';
   }
 
-  push(text, { timestamp = false, hex = false, ts = '' } = {}) {
+  push(text, { frameEnd = false, marker = null } = {}) {
     const actions = [];
-
-    if (hex) {
-      const sep = this.open ? ' ' : '';
-      actions.push({ type: 'append', text: sep + text });
+    if (!this.open) {
+      actions.push({ type: 'frame-start', marker });
       this.open = true;
-      return actions;
+      this.pending = '';
     }
-
-    const parts = text.split(/\r\n|\r|\n/);
-    const trailingNL = /[\r\n]$/.test(text);
-    const end = trailingNL ? parts.length - 1 : parts.length;
-
-    if (timestamp) {
-      actions.push({ type: 'line', text: parts[0], marker: ts });
-      for (let i = 1; i < end; i++) {
-        actions.push({ type: 'line', text: parts[i] });
-      }
-      if (trailingNL) {
-        actions.push({ type: 'line', text: '' });
-      }
-      this.open = false;
-      return actions;
+    if (text) this.pending += text;
+    if (this.pending.length >= this.chunkSize) {
+      actions.push({ type: 'frame-append', text: this.pending });
+      this.pending = '';
     }
-
-    if (parts[0] !== '') {
-      actions.push({ type: 'append', text: parts[0] });
-    } else {
+    if (frameEnd) {
+      if (this.pending) {
+        actions.push({ type: 'frame-append', text: this.pending });
+        this.pending = '';
+      }
+      actions.push({ type: 'frame-end' });
       this.open = false;
     }
-    for (let i = 1; i < end; i++) {
-      actions.push({ type: 'line', text: parts[i] });
-    }
-    this.open = !trailingNL && end > 0;
     return actions;
+  }
+
+  /// Abandon any open frame without emitting a frame-end (reset only).
+  reset() {
+    this.open = false;
+    this.pending = '';
   }
 }

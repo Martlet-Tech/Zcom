@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (el) el.style.display = isTerminal ? 'none' : '';
     });
 
-    const statusEl = document.getElementById('status-hide-terminal');
+    const statusEl = document.getElementById('status-debug');
     if (statusEl) statusEl.style.display = isTerminal ? 'none' : '';
 
     document.querySelectorAll('.view-item').forEach(item => {

@@ -8,11 +8,14 @@ let term = null;
 let fitAddon = null;
 let termZoom = null;
 let baseFontSize = 14;
-let localEcho = true;
+let echoEnabled = true;
 
 /// Creates the terminal once. It stays alive forever; visibility is controlled
 /// separately via setTerminalVisible (terminal = primary data path, debug view
-/// is just a mirror).
+/// is just a mirror). The terminal is a transparent pipe: keystrokes go out,
+/// only remote return data is displayed (no local echo on the terminal
+/// screen). Keystrokes are still mirrored to the debug view as [T] frames
+/// when the echo switch is on.
 export function createTerminal(settings) {
   if (term) return;
 
@@ -36,22 +39,21 @@ export function createTerminal(settings) {
   term.open(container);
   termZoom = new TerminalZoom(container, term, baseFontSize);
 
-  localEcho = settings.echoEnabled !== false;
+  echoEnabled = settings.echoEnabled !== false;
 
   term.onData((data) => {
     const bytes = Array.from(new TextEncoder().encode(data));
     invoke('send_raw_bytes', { bytes }).catch(() => {});
-    if (localEcho) {
-      termWrite(data);
+    if (echoEnabled) {
       document.dispatchEvent(new CustomEvent('terminal-input-echo', { detail: { text: data } }));
     }
   });
 
   document.addEventListener('settings-applied', (e) => {
-    localEcho = e.detail.echoEnabled !== false;
+    echoEnabled = e.detail.echoEnabled !== false;
   });
   document.addEventListener('echo-enabled-change', (e) => {
-    localEcho = e.detail.on;
+    echoEnabled = e.detail.on;
   });
 
   requestAnimationFrame(() => termFit());

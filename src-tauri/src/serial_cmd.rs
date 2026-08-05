@@ -311,6 +311,13 @@ fn run_port_manager(
     }
 }
 
+fn emit_serial_data(app: &tauri::AppHandle, data: Vec<u8>, frame_end: bool) {
+    let _ = app.emit(
+        "serial-data",
+        serde_json::json!({ "bytes": data, "frameEnd": frame_end }),
+    );
+}
+
 fn read_loop(
     reader: serial2::SerialPort,
     state: &SerialState,
@@ -327,7 +334,7 @@ fn read_loop(
             || state.generation.load(Ordering::SeqCst) != gen
         {
             if !acc.is_empty() {
-                let _ = app.emit("serial-data", acc.clone());
+                emit_serial_data(app, acc.clone(), true);
             }
             return ReadLoopEnd::Stopped;
         }
@@ -338,13 +345,13 @@ fn read_loop(
                 state.rx_bytes.fetch_add(n as u64, Ordering::SeqCst);
                 if acc.len() >= 4096 {
                     let data = std::mem::take(&mut acc);
-                    let _ = app.emit("serial-data", data);
+                    emit_serial_data(app, data, false);
                 }
             }
             Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => {
                 if !acc.is_empty() && last_time.elapsed() >= GAP_TIMEOUT {
                     let data = std::mem::take(&mut acc);
-                    let _ = app.emit("serial-data", data);
+                    emit_serial_data(app, data, true);
                 }
                 std::thread::sleep(Duration::from_millis(10));
             }

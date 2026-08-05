@@ -189,6 +189,12 @@ impl SerialState {
     }
 
     pub async fn to_port_info(&self) -> serde_json::Value {
+        let reconnecting = |conn: &ConnCore| {
+            matches!(
+                *conn.state.lock().unwrap_or_else(|e| e.into_inner()),
+                ConnState::Reconnecting
+            )
+        };
         if self.net.mode.load(Ordering::SeqCst) != MODE_SERIAL {
             let remote = self
                 .net
@@ -209,6 +215,7 @@ impl SerialState {
                 "name": remote,
                 "local": local,
                 "connected": self.net.connected.load(Ordering::SeqCst),
+                "reconnecting": reconnecting(&self.net.conn),
                 "tx": self.net.tx_bytes.load(Ordering::SeqCst),
                 "rx": self.net.rx_bytes.load(Ordering::SeqCst),
             });
@@ -221,6 +228,7 @@ impl SerialState {
             "mode": MODE_SERIAL,
             "name": name,
             "connected": connected,
+            "reconnecting": reconnecting(&self.conn),
             "tx": tx,
             "rx": rx,
             "baud": self.baud_rate.load(Ordering::SeqCst),
