@@ -612,14 +612,6 @@ pub async fn detect_esp_paths() -> Result<serde_json::Value, String> {
                         python_paths.push(f.to_string_lossy().to_string());
                     }
                 }
-                if p.file_name().and_then(|n| n.to_str()).map_or(false, |n| n.starts_with("tools")) {
-                    let py_dir = p.join("python_env");
-                    let mut found = Vec::new();
-                    collect_env_pythons(&py_dir, &mut found);
-                    for f in found {
-                        python_paths.push(f.to_string_lossy().to_string());
-                    }
-                }
             }
         }
     }

@@ -69,16 +69,6 @@ export function setTerminalVisible(visible) {
   }
 }
 
-export function destroyTerminal() {
-  termZoom?.destroy();
-  termZoom = null;
-  if (term) {
-    term.dispose();
-    term = null;
-    fitAddon = null;
-  }
-}
-
 export function termWrite(text) {
   if (term) term.write(text);
 }

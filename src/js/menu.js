@@ -361,7 +361,7 @@ export function initMenu() {
         transition(PortEvent.DEVICE_LOST);
       } else {
         transition(PortEvent.OPEN_OK);
-        showToast(`已恢复连接: ${info.name || '网络'}`, 'ok');
+        showToast(t('common.reconnected', { name: info.name || t('common.net') }), 'ok');
       }
       if (info.name) {
         currentPort = info.name;

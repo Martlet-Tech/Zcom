@@ -17,6 +17,8 @@
     "connectionFailed": "连接失败",
     "settingsFailed": "设置失败",
     "doubleClickCopy": "双击可复制",
+    "reconnected": "已恢复连接: {name}",
+    "net": "网络",
     "reconnecting": "连接断开,正在重连..."
   },
   "titlebar": {

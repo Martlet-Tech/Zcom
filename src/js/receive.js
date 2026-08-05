@@ -26,8 +26,6 @@ let filterInput = null;
 
 let filterDebounceTimer = null;
 
-let lastDirection = 'R';
-
 let foldEnabled = false;
 let foldThreshold = 5;
 let foldActive = false;
@@ -40,10 +38,6 @@ let prevFrameRaw = '';
 
 let openFrame = null;
 let frameText = '';
-
-let openEchoFrame = null;
-let echoText = '';
-let echoTimer = null;
 
 let contextMenu = null;
 
@@ -372,7 +366,6 @@ const layout = new FrameLayout();
 function applyFrameActions(actions) {
   for (const a of actions) {
     if (a.type === 'frame-start') {
-      finalizeEchoFrame();
       if (!openFrame) {
         openFrame = buildFrameEl(a.marker, '');
         receiveContent.appendChild(openFrame);
@@ -407,7 +400,6 @@ function finalizeFrame() {
     if (foldActive && foldBadge && raw === foldText) {
       foldCount++;
       foldBadge.querySelector('.fold-count').textContent = ` [×${foldCount}]`;
-      if (mcpBuffer.length) mcpBuffer[mcpBuffer.length - 1] = foldBadge.textContent;
       evictIfNeeded();
       return;
     }
@@ -449,36 +441,20 @@ function finalizeFrame() {
   if (autoScroll) receiveArea.scrollTop = receiveArea.scrollHeight;
 }
 
-/// Closes the current input-echo frame (R-frame start or 500ms idle).
-function finalizeEchoFrame() {
-  clearTimeout(echoTimer);
-  echoTimer = null;
-  if (!openEchoFrame) return;
-  const line = openEchoFrame;
-  const raw = echoText;
-  openEchoFrame = null;
-  echoText = '';
-  if (filterText && !matchesFilter(raw)) line.style.display = 'none';
-  mcpBuffer.push(raw);
+/// One send or terminal keystroke = one echo frame (immediate, no
+/// aggregation) — the debug mirror shows exactly what the user produced.
+function appendEchoFrame(text, marker) {
+  if (!echoEnabled) return;
+  const line = buildFrameEl(marker, '');
+  receiveContent.appendChild(line);
+  line.appendChild(document.createTextNode(text));
+  if (filterText && !matchesFilter(text)) line.style.display = 'none';
+  mcpBuffer.push(text);
   evictIfNeeded();
   if (autoScroll) receiveArea.scrollTop = receiveArea.scrollHeight;
 }
 
-/// One send = one echo frame, finalized immediately. No aggregation — the
-/// echo frames mirror what was actually sent, frame by frame.
-function appendEchoFrame(text, marker) {
-  if (!echoEnabled) return;
-  finalizeEchoFrame();
-  openEchoFrame = buildFrameEl(marker, '');
-  receiveContent.appendChild(openEchoFrame);
-  echoText = text;
-  openEchoFrame.appendChild(document.createTextNode(text));
-  finalizeEchoFrame();
-}
-
 export async function appendData({ bytes, frameEnd }, direction) {
-  lastDirection = direction;
-
   let text;
   try {
     text = await invoke('decode_bytes', { bytes, encoding });
@@ -592,20 +568,12 @@ export async function initReceive() {
   mcpFlushTimer = setInterval(flushMcp, 1000);
 }
 
-export function setEncoding(enc) {
-  encoding = enc;
-}
-
 function clearReceiveLines() {
   if (receiveContent) {
     receiveContent.innerHTML = '';
   }
-  clearTimeout(echoTimer);
-  echoTimer = null;
   openFrame = null;
   frameText = '';
-  openEchoFrame = null;
-  echoText = '';
   layout.reset();
   foldActive = false;
   foldBadge = null;
@@ -633,10 +601,6 @@ async function flushMcp() {
     mcpBuffer.unshift(...lines);
     console.warn('MCP flush failed, will retry');
   }
-}
-
-export function getReceiveText() {
-  return receiveContent ? receiveContent.textContent || '' : '';
 }
 
 export function setHexDisplay(v) {

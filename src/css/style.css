@@ -847,12 +847,10 @@ select:focus, input:focus, textarea:focus {
   gap: 10px;
   white-space: nowrap;
 }
-#status-common, #status-debug {
+#status-debug {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-}
-#status-debug {
   padding-left: 10px;
   border-left: 1px solid var(--border);
 }

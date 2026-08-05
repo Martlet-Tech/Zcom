@@ -17,6 +17,8 @@
     "connectionFailed": "Connection failed",
     "settingsFailed": "Apply failed",
     "doubleClickCopy": "Double-click to copy",
+    "reconnected": "Connection restored: {name}",
+    "net": "network",
     "reconnecting": "Disconnected, reconnecting..."
   },
   "titlebar": {
