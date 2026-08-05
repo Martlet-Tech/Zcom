@@ -487,6 +487,17 @@ select:focus, input:focus, textarea:focus {
   padding: 0 4px;
   line-height: 20px;    /* must match #receive-area line-height */
 }
+/* Frame model: one frame = one div; marker and content flow inline as a
+   single text stream so long frames wrap naturally. */
+.receive-line.frame {
+  display: block;
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+.receive-line.frame .marker {
+  display: inline;
+}
 .receive-line .marker {
   color: var(--receive-marker, var(--receive-color));
 }

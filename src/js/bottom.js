@@ -3,7 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readTextFile, writeTextFile, readFile } from '@tauri-apps/plugin-fs';
-import { getSettings, patchSettings } from './utils.js';
+import { getSettings, patchSettings, parseHexString, bytesToHex } from './utils.js';
 import { setButtonIcon, Upload, Square, Flame } from './icons.js';
 import { t } from './i18n.js';
 import { PortState, PortEvent, portFSM } from './serial-state.js';
@@ -504,11 +504,21 @@ export async function initBottom() {
       const lsb = getChecksumLsb();
       try {
         const r = await invoke('calculate_checksum', { data: text, hexMode, algo, position: pos, lsb });
-        document.dispatchEvent(new CustomEvent('send-echo', { detail: { text: r.appliedHex } }));
+        document.dispatchEvent(new CustomEvent('send-echo', { detail: { text: r.appliedHex, isHex: true } }));
         await invoke('send_data_raw', { data: text, hexMode, encoding, checksumAlgo: algo, checksumPos: pos, checksumLsb: lsb });
       } catch (e) {
         console.error('Checksum error:', e);
       }
+    } else if (hexMode) {
+      // hex 发送语义: 输入按空格分开、2 个 hex 字组合成 1 字节——回显展示实际字节
+      let echoText = text;
+      try {
+        echoText = bytesToHex(parseHexString(text));
+      } catch (e) {
+        console.warn('hex echo parse:', e);
+      }
+      document.dispatchEvent(new CustomEvent('send-echo', { detail: { text: echoText, isHex: true } }));
+      await invoke('send_data_raw', { data: text, hexMode, encoding });
     } else {
       document.dispatchEvent(new CustomEvent('send-echo', { detail: { text } }));
       await invoke('send_data_raw', { data: text, hexMode, encoding });

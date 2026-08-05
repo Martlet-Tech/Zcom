@@ -443,13 +443,19 @@ function finalizeFrame() {
 
 /// One send or terminal keystroke = one echo frame (immediate, no
 /// aggregation) — the debug mirror shows exactly what the user produced.
-function appendEchoFrame(text, marker) {
+/// Hex display mode applies to echo frames too, so [T]/[R] frames match.
+/// `alreadyHex` marks echo content that already is the hex of the actual
+/// sent bytes (hex-send / checksum mode) — it must NOT be re-encoded.
+function appendEchoFrame(text, marker, alreadyHex = false) {
   if (!echoEnabled) return;
+  const display = alreadyHex
+    ? text
+    : (hexDisplay ? bytesToHex(Array.from(new TextEncoder().encode(text))) : text);
   const line = buildFrameEl(marker, '');
   receiveContent.appendChild(line);
-  line.appendChild(document.createTextNode(text));
-  if (filterText && !matchesFilter(text)) line.style.display = 'none';
-  mcpBuffer.push(text);
+  line.appendChild(document.createTextNode(display));
+  if (filterText && !matchesFilter(display)) line.style.display = 'none';
+  mcpBuffer.push(display);
   evictIfNeeded();
   if (autoScroll) receiveArea.scrollTop = receiveArea.scrollHeight;
 }
@@ -474,10 +480,10 @@ export async function appendData({ bytes, frameEnd }, direction) {
   applyFrameActions(layout.push(frameText, { frameEnd: !!frameEnd, marker }));
 }
 
-function appendSentText(text) {
+function appendSentText(text, isHex) {
   if (!echoEnabled) return;
   const marker = echoPrefix ? (showTimestamp ? `[T-${timestamp()}]` : '[T]') : null;
-  appendEchoFrame(text, marker);
+  appendEchoFrame(text, marker, isHex);
 }
 
 export async function initReceive() {
@@ -517,12 +523,12 @@ export async function initReceive() {
     await appendData(event.payload, 'R');
   });
   document.addEventListener('send-echo', (e) => {
-    appendSentText(e.detail.text);
+    appendSentText(e.detail.text, e.detail.isHex === true);
   });
 
   document.addEventListener('terminal-input-echo', (e) => {
     const marker = echoPrefix ? (showTimestamp ? `[T-${timestamp()}]` : '[T]') : null;
-    appendEchoFrame(e.detail.text, marker);
+    appendEchoFrame(e.detail.text, marker, false);
   });
 
   document.addEventListener('encoding-change', (e) => {
