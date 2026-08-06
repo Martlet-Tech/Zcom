@@ -9,6 +9,13 @@ edition = "2021"
 name = "zcom_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
+# main.rs 无单元测试；禁用 bin 的 test harness 可避免其链接
+# tauri .rc manifest 与 comctl32 v6 嵌入的 COFF 转换冲突（LNK1123）。
+[[bin]]
+name = "zcom"
+path = "src/main.rs"
+test = false
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 

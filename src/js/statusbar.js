@@ -1,11 +1,10 @@
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import { getSettings, patchSettings, formatByteCount } from './utils.js';
 import { t } from './i18n.js';
 import { PortState, portFSM } from './serial-state.js';
 
 export async function initStatusBar() {
-  let portConnected = false;
-
   const chkHexSend = document.getElementById('chk-hex-send');
   const chkHexDisplay = document.getElementById('chk-hex-display');
   const chkTimestamp = document.getElementById('chk-timestamp');
@@ -16,11 +15,29 @@ export async function initStatusBar() {
   const statSel = document.getElementById('stat-sel');
   const portInfo = document.getElementById('port-info');
 
+  /// Connection text + initial counters, pulled once when entering CONNECTED.
+  /// TX/RX live updates come from the `io-stats` pipeline event (FSM-free).
+  async function onConnected() {
+    try {
+      const info = await invoke('get_port_info');
+      displayTx(info.tx || 0);
+      displayRx(info.rx || 0);
+      if (info.mode && info.mode !== 0) {
+        portInfo.innerHTML = t('statusbar.netConnected', { remote: info.name || info.local || '' });
+      } else {
+        portInfo.innerHTML = t('statusbar.connectedInfo', { name: info.name, baud: info.baud, dataBits: info.dataBits, stopBits: info.stopBits });
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   portFSM.on((state, fsm) => {
-    portConnected = state === PortState.CONNECTED;
     if (state === PortState.RECONNECTING) {
       portInfo.innerHTML = t('statusbar.reconnectingInfo', { name: fsm.portName || '', baud: fsm.baud || '' });
-    } else if (!portConnected) {
+    } else if (state === PortState.CONNECTED) {
+      onConnected();
+    } else {
       portInfo.innerHTML = `<span>${t('common.disconnected')}</span>`;
     }
   });
@@ -120,21 +137,13 @@ export async function initStatusBar() {
     navigator.clipboard.writeText(statRx.textContent.replace('Rx: ', ''));
   });
 
-  setInterval(async () => {
-    if (!portConnected) return;
-    try {
-      const info = await invoke('get_port_info');
-      displayTx(info.tx);
-      displayRx(info.rx);
-      if (info.mode && info.mode !== 0) {
-        portInfo.innerHTML = t('statusbar.netConnected', { remote: info.name || info.local || '' });
-      } else {
-        portInfo.innerHTML = t('statusbar.connectedInfo', { name: info.name, baud: info.baud, dataBits: info.dataBits, stopBits: info.stopBits });
-      }
-    } catch {
-      // ignore
-    }
-  }, 500);
+  // TX/RX from the terminal pipeline: backend Meter emits io-stats (throttled
+  // 250ms) as data flows; no FSM gating, survives reload-while-connected.
+  listen('io-stats', (e) => {
+    const p = e.payload || {};
+    displayTx(p.tx || 0);
+    displayRx(p.rx || 0);
+  });
 
   document.addEventListener('selection-bytes-changed', (e) => {
     const bytes = e.detail.bytes;

@@ -12,6 +12,7 @@ export function setTerminalMode(v) { isTerminalMode = v; }
 let autoScroll = true;
 let hexDisplay = false;
 let showTimestamp = true;
+let showEscapes = true;
 let encoding = 'utf-8';
 let echoEnabled = true;
 let echoPrefix = true;
@@ -457,7 +458,7 @@ function appendEchoFrame(text, marker, alreadyHex = false) {
     ? text
     : (hexDisplay
       ? bytesToHex(Array.from(new TextEncoder().encode(text)))
-      : decodeDisplay(Array.from(new TextEncoder().encode(text)), encoding));
+      : decodeDisplay(Array.from(new TextEncoder().encode(text)), encoding, showEscapes));
   const line = buildFrameEl(marker, '');
   receiveContent.appendChild(line);
   line.appendChild(document.createTextNode(display));
@@ -482,9 +483,11 @@ export async function appendData({ bytes, frameEnd }, direction) {
   // are flushed progressively (256B chunks, see FrameLayout). Display form
   // (hex / control pictures / CP437) is a frontend-only concern — the MCP
   // buffer receives the pure decoded text.
-  const marker = showTimestamp ? `[${direction}-${timestamp()}]` : '[R]';
+  // [R] marker only makes sense to distinguish receive from echo frames:
+  // with both echo and timestamps off, drop it entirely (clean mirror).
+  const marker = showTimestamp ? `[${direction}-${timestamp()}]` : (echoEnabled ? '[R]' : null);
   const actions = layout.push(
-    hexDisplay ? bytesToHex(bytes) : decodeDisplay(bytes, encoding),
+    hexDisplay ? bytesToHex(bytes) : decodeDisplay(bytes, encoding, showEscapes),
     { frameEnd: !!frameEnd, marker },
   );
   if (actions.some(a => a.type === 'frame-start')) framePure = '';
@@ -508,6 +511,7 @@ export async function initReceive() {
   const s = await getSettings();
   hexDisplay = s.hexDisplay;
   showTimestamp = s.showTimestamp;
+  showEscapes = s.showEscapes !== false;
   encoding = s.encoding || 'utf-8';
   echoEnabled = s.echoEnabled !== false;
   echoPrefix = s.echoPrefix !== false;
@@ -555,6 +559,7 @@ export async function initReceive() {
   document.addEventListener('settings-applied', (e) => {
     echoEnabled = e.detail.echoEnabled !== false;
     echoPrefix = e.detail.echoPrefix !== false;
+    showEscapes = e.detail.showEscapes !== false;
   });
 
   document.addEventListener('echo-enabled-change', (e) => {

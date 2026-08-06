@@ -15,6 +15,13 @@ describe('decodeDisplay — 调试镜像显示形态（前端专用）', () => {
     expect(decodeDisplay(enc('\x7f'), 'utf-8')).toBe('\u2421');
   });
 
+  it('keeps control chars raw when escapes are off', () => {
+    expect(decodeDisplay(enc('\x1b[32m'), 'utf-8', false)).toBe('\x1b[32m');
+    expect(decodeDisplay(enc('\r\n'), 'utf-8', false)).toBe('\r\n');
+    expect(decodeDisplay(enc('\x00'), 'utf-8', false)).toBe('\x00');
+    expect(decodeDisplay(enc('\x7f'), 'utf-8', false)).toBe('\x7f');
+  });
+
   it('decodes valid UTF-8 multibyte sequences', () => {
     expect(decodeDisplay(enc('中文'), 'utf-8')).toBe('中文');
     expect(decodeDisplay(enc('a中b'), 'utf-8')).toBe('a中b');

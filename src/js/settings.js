@@ -67,6 +67,8 @@ async function loadDialogValues() {
   if (echoEnabled) echoEnabled.checked = ss.echoEnabled !== false;
   const echoPrefix = document.getElementById('setting-echo-prefix');
   if (echoPrefix) echoPrefix.checked = ss.echoPrefix !== false;
+  const showEscapes = document.getElementById('setting-show-escapes');
+  if (showEscapes) showEscapes.checked = ss.showEscapes !== false;
   const espIdf = document.getElementById('setting-esp-idf');
   if (espIdf) espIdf.value = ss.espIdfPath || '';
   const espPython = document.getElementById('setting-esp-python');
@@ -236,6 +238,7 @@ export async function initSettings() {
   };
   bindBool('setting-echo-enabled', 'echoEnabled');
   bindBool('setting-echo-prefix', 'echoPrefix');
+  bindBool('setting-show-escapes', 'showEscapes');
   bindBool('setting-auto-reconnect', 'autoReconnect');
   bindBool('setting-mcp-enabled', 'mcpEnabled');
 

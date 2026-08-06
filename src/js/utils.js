@@ -16,6 +16,7 @@ const defaults = {
   currentPort: '',
   hexDisplay: false,
   showTimestamp: true,
+  showEscapes: true,
   hexSend: false,
   sendText: '',
   checksumOn: false,
@@ -110,10 +111,11 @@ function utf8Len(b) {
 
 /// Display-form decode for the debug mirror (human eyes only; MCP/backend
 /// keep raw decoded text). Walks the raw bytes: ASCII stays as-is, control
-/// chars become control pictures (␀..␟, ␡), valid UTF-8/GBK sequences are
-/// decoded to text, and bytes that form no valid sequence render as CP437
-/// symbols. Pure frontend concern — nothing here feeds the terminal or MCP.
-export function decodeDisplay(bytes, encoding) {
+/// chars become control pictures (␀..␟, ␡) when `showEscapes` is on (raw
+/// otherwise), valid UTF-8/GBK sequences are decoded to text, and bytes that
+/// form no valid sequence render as CP437 symbols. Pure frontend concern —
+/// nothing here feeds the terminal or MCP.
+export function decodeDisplay(bytes, encoding, showEscapes = true) {
   const gbk = encoding === 'gbk';
   const dec = new TextDecoder(gbk ? 'gbk' : 'utf-8');
   const u8 = bytes instanceof Uint8Array ? bytes : Uint8Array.from(bytes);
@@ -123,9 +125,9 @@ export function decodeDisplay(bytes, encoding) {
     const b = u8[i];
     if (b < 0x80) {
       if (b < 0x20) {
-        out += String.fromCodePoint(0x2400 + b);
+        out += showEscapes ? String.fromCodePoint(0x2400 + b) : String.fromCharCode(b);
       } else if (b === 0x7f) {
-        out += '\u2421';
+        out += showEscapes ? '\u2421' : String.fromCharCode(b);
       } else {
         out += String.fromCharCode(b);
       }

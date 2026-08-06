@@ -1,6 +1,5 @@
 use crate::receive_buffer::ReceiveBuffer;
 use crate::serial_cmd;
-use crate::state::SerialState;
 use axum::{
     extract::State,
     http::StatusCode,
@@ -32,7 +31,7 @@ impl McpServerHandle {
 
 struct AppState {
     buffer: ReceiveBuffer,
-    serial: SerialState,
+    conn: crate::conn::ConnHandle,
     esp: crate::esp_cmd::EspHandle,
     app_handle: tauri::AppHandle,
 }
@@ -41,7 +40,7 @@ impl Clone for AppState {
     fn clone(&self) -> Self {
         Self {
             buffer: self.buffer.clone(),
-            serial: self.serial.clone(),
+            conn: self.conn.clone(),
             esp: self.esp.clone(),
             app_handle: self.app_handle.clone(),
         }
@@ -120,7 +119,7 @@ async fn handle_resources_read(state: &AppState, body: &Value, id: Value) -> (St
             (StatusCode::OK, Json(resp))
         }
         "serial://port" => {
-            let info = state.serial.to_port_info().await;
+            let info = state.conn.info().await;
             let resp = jsonrpc_success(id, json!({
                 "contents": [{
                     "uri": "serial://port",
@@ -229,7 +228,7 @@ async fn handle_tools_call(state: &AppState, body: &Value, id: Value) -> (Status
             (StatusCode::OK, Json(resp))
         }
         "get_port_status" => {
-            let info = state.serial.to_port_info().await;
+            let info = state.conn.info().await;
             let resp = jsonrpc_success(id, json!({
                 "content": [{
                     "type": "text",
@@ -252,7 +251,7 @@ async fn handle_tools_call(state: &AppState, body: &Value, id: Value) -> (Status
             }
 
             match serial_cmd::send_data_internal(
-                &state.serial,
+                &state.conn,
                 text.to_string(),
                 false,
                 Some(encoding.to_string()),
@@ -323,6 +322,7 @@ async fn handle_tools_call(state: &AppState, body: &Value, id: Value) -> (Status
             let esp = state.esp.clone();
             let app_handle = state.app_handle.clone();
             let serial_name = state
+                .conn
                 .serial
                 .port_name
                 .lock()
@@ -397,7 +397,7 @@ pub async fn mcp_start(
     app_handle: tauri::AppHandle,
     handle: tauri::State<'_, McpServerHandle>,
     buffer: tauri::State<'_, ReceiveBuffer>,
-    serial: tauri::State<'_, SerialState>,
+    conn: tauri::State<'_, crate::conn::ConnHandle>,
     esp: tauri::State<'_, crate::esp_cmd::EspHandle>,
     port: u16,
 ) -> Result<(), String> {
@@ -409,7 +409,7 @@ pub async fn mcp_start(
     let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
     let state = AppState {
         buffer: (*buffer).clone(),
-        serial: (*serial).clone(),
+        conn: (*conn).clone(),
         esp: (*esp).clone(),
         app_handle: app_handle.clone(),
     };

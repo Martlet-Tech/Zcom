@@ -116,6 +116,7 @@
     "lineEnding": "Append on send:",
     "echo": "Send echo:",
     "echoPrefix": "Show R/T prefix",
+    "showEscapes": "Escape control chars (CR/LF etc.):",
     "none": "None",
     "chunkInterval": "Send chunk interval:",
     "ms": "ms",

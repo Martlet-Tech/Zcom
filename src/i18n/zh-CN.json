@@ -116,6 +116,7 @@
     "lineEnding": "发送时附加:",
     "echo": "发送回显:",
     "echoPrefix": "带 R/T 前缀",
+    "showEscapes": "控制字符转义显示(CR/LF等):",
     "none": "无",
     "chunkInterval": "发送分包间隔:",
     "ms": "ms",

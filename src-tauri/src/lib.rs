@@ -1,6 +1,7 @@
 mod serial_cmd;
 mod checksum;
 mod state;
+mod conn;
 mod receive_buffer;
 mod mcp_server;
 mod window_helper;
@@ -9,6 +10,7 @@ mod multi_string;
 mod net_cmd;
 mod esp_cmd;
 
+use conn::{ConnHandle, Meter, ToolGate};
 use esp_cmd::EspHandle;
 use state::{NetState, SerialState};
 use receive_buffer::ReceiveBuffer;
@@ -72,8 +74,16 @@ fn set_tray_menu_language(app: tauri::AppHandle, lang: String) -> Result<(), Str
 pub fn run() {
     env_logger::init();
 
-    let net = NetState::new();
+    let tool = std::sync::Arc::new(ToolGate::default());
+    let meter = std::sync::Arc::new(Meter::default());
+    let net = NetState::new(tool.clone(), meter.clone());
     let serial = SerialState::new_with_net(net.clone());
+    let conn = ConnHandle::new(
+        std::sync::Arc::new(serial.clone()),
+        std::sync::Arc::new(net.clone()),
+        tool,
+        meter,
+    );
 
     tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::default().build())
@@ -82,6 +92,7 @@ pub fn run() {
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .manage(serial)
         .manage(net)
+        .manage(conn)
         .manage(EspHandle::new())
         .manage(ReceiveBuffer::new())
         .manage(McpServerHandle::new())
@@ -122,6 +133,7 @@ pub fn run() {
             set_tray_menu_language,
         ])
         .setup(|app| {
+            app.state::<ConnHandle>().attach(app.handle().clone());
             let show_item = MenuItemBuilder::with_id("show", "显示主窗口")
                 .build(app)?;
             let quit_item = MenuItemBuilder::with_id("quit", "退出")

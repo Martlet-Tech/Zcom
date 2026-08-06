@@ -1,9 +1,10 @@
 use crate::checksum;
 use crate::checksum::ChecksumAlgo;
+use crate::conn::{Conn, ConnHandle, ConnParams};
 use crate::encoding_utils;
-use crate::net_cmd;
 use crate::state::{ConnState, SerialState, MODE_SERIAL};
 use serial2::{CharSize, FlowControl, Parity, StopBits};
+use std::io::Read;
 use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 use serde::Serialize;
@@ -111,7 +112,7 @@ fn open_port_sync(
 
 #[tauri::command]
 pub async fn open_port(
-    state: tauri::State<'_, SerialState>,
+    handle: tauri::State<'_, ConnHandle>,
     app: tauri::AppHandle,
     path: String,
     baud: u32,
@@ -120,11 +121,24 @@ pub async fn open_port(
     parity: String,
     flow_control: String,
 ) -> Result<(), String> {
-    let _guard = state.op_lock.lock().await;
-    open_port_inner(&state, &app, &path, baud, char_size, stop_bits, &parity, &flow_control).await
+    handle
+        .open(
+            &app,
+            ConnParams {
+                mode: MODE_SERIAL,
+                path: Some(path),
+                baud: Some(baud),
+                char_size: Some(char_size),
+                stop_bits: Some(stop_bits),
+                parity: Some(parity),
+                flow_control: Some(flow_control),
+                ..Default::default()
+            },
+        )
+        .await
 }
 
-async fn open_port_inner(
+pub(crate) async fn open_port_inner(
     state: &SerialState,
     app: &tauri::AppHandle,
     path: &str,
@@ -186,8 +200,7 @@ fn register_port(
     state.baud_rate.store(baud, Ordering::SeqCst);
     state.char_size.store(char_size, Ordering::SeqCst);
     state.stop_bits.store(stop_bits, Ordering::SeqCst);
-    state.tx_bytes.store(0, Ordering::SeqCst);
-    state.rx_bytes.store(0, Ordering::SeqCst);
+    state.meter.reset();
 }
 
 fn set_conn_state(state: &SerialState, s: ConnState) {
@@ -325,6 +338,8 @@ fn read_loop(
     gen: u32,
 ) -> ReadLoopEnd {
     const GAP_TIMEOUT: Duration = Duration::from_millis(5);
+    // 非侵入计数：读句柄包 MeteredReader 装饰器，循环逻辑不感知计数。
+    let mut reader = crate::conn::MeteredReader::new(reader, state.meter.clone());
     let mut buf = [0u8; 4096];
     let mut acc: Vec<u8> = Vec::new();
     let mut last_time = Instant::now();
@@ -338,11 +353,14 @@ fn read_loop(
             }
             return ReadLoopEnd::Stopped;
         }
+        if state.net.tool.is_busy() {
+            std::thread::sleep(Duration::from_millis(10));
+            continue;
+        }
         match reader.read(&mut buf) {
             Ok(n) if n > 0 => {
                 acc.extend_from_slice(&buf[..n]);
                 last_time = Instant::now();
-                state.rx_bytes.fetch_add(n as u64, Ordering::SeqCst);
                 if acc.len() >= 4096 {
                     let data = std::mem::take(&mut acc);
                     emit_serial_data(app, data, false);
@@ -366,13 +384,12 @@ fn read_loop(
 
 #[tauri::command]
 pub async fn close_port(
-    state: tauri::State<'_, SerialState>,
+    handle: tauri::State<'_, ConnHandle>,
 ) -> Result<(), String> {
-    let _guard = state.op_lock.lock().await;
-    close_port_inner(&state).await
+    handle.close(Conn::Serial).await
 }
 
-async fn close_port_inner(
+pub(crate) async fn close_port_inner(
     state: &SerialState,
 ) -> Result<(), String> {
     state.stop_reading.store(true, Ordering::SeqCst);
@@ -415,7 +432,7 @@ async fn reopen_with_params(
 
 #[tauri::command]
 pub async fn set_baud_rate(
-    state: tauri::State<'_, SerialState>,
+    handle: tauri::State<'_, ConnHandle>,
     app: tauri::AppHandle,
     path: String,
     baud: u32,
@@ -424,13 +441,13 @@ pub async fn set_baud_rate(
     parity: String,
     flow_control: String,
 ) -> Result<(), String> {
-    let _guard = state.op_lock.lock().await;
-    reopen_with_params(&state, &app, &path, baud, char_size, stop_bits, &parity, &flow_control).await
+    let _guard = handle.op_lock.lock().await;
+    reopen_with_params(&handle.serial, &app, &path, baud, char_size, stop_bits, &parity, &flow_control).await
 }
 
 #[tauri::command]
 pub async fn switch_port(
-    state: tauri::State<'_, SerialState>,
+    handle: tauri::State<'_, ConnHandle>,
     app: tauri::AppHandle,
     path: String,
     baud: u32,
@@ -439,12 +456,12 @@ pub async fn switch_port(
     parity: String,
     flow_control: String,
 ) -> Result<(), String> {
-    let _guard = state.op_lock.lock().await;
-    reopen_with_params(&state, &app, &path, baud, char_size, stop_bits, &parity, &flow_control).await
+    let _guard = handle.op_lock.lock().await;
+    reopen_with_params(&handle.serial, &app, &path, baud, char_size, stop_bits, &parity, &flow_control).await
 }
 
 pub async fn send_data_internal(
-    state: &SerialState,
+    conn: &ConnHandle,
     data: String,
     hex_mode: bool,
     encoding: Option<String>,
@@ -456,39 +473,24 @@ pub async fn send_data_internal(
         encoding_utils::encode_text(&data, enc)
     };
 
-    route_bytes(state, &bytes).await?;
+    conn.send(&bytes).await?;
 
     Ok(bytes.iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(" "))
 }
 
-async fn route_bytes(state: &SerialState, bytes: &[u8]) -> Result<(), String> {
-    if state.net.mode.load(Ordering::SeqCst) != MODE_SERIAL {
-        return net_cmd::net_send_bytes(&state.net, bytes).await;
-    }
-    if !state.connected.load(Ordering::SeqCst) {
-        return Err("Port not open".into());
-    }
-    let mut port = state.port.lock().unwrap_or_else(|e| e.into_inner());
-    let port = port.as_mut().ok_or("Port not open")?;
-    port.write_all(bytes).map_err(|e| format!("Write error: {}", e))?;
-    port.flush().map_err(|e| format!("Flush error: {}", e))?;
-    state.tx_bytes.fetch_add(bytes.len() as u64, Ordering::SeqCst);
-    Ok(())
-}
-
 #[tauri::command]
 pub async fn send_data(
-    state: tauri::State<'_, SerialState>,
+    handle: tauri::State<'_, ConnHandle>,
     data: String,
     hex_mode: bool,
     encoding: Option<String>,
 ) -> Result<String, String> {
-    send_data_internal(&state, data, hex_mode, encoding).await
+    send_data_internal(&handle, data, hex_mode, encoding).await
 }
 
 #[tauri::command]
 pub async fn send_data_raw(
-    state: tauri::State<'_, SerialState>,
+    handle: tauri::State<'_, ConnHandle>,
     data: String,
     hex_mode: bool,
     encoding: Option<String>,
@@ -496,7 +498,6 @@ pub async fn send_data_raw(
     checksum_pos: Option<i32>,
     checksum_lsb: Option<bool>,
 ) -> Result<(), String> {
-    let state = state.inner();
     let bytes = if hex_mode {
         encoding_utils::parse_hex_string(&data).map_err(|e| format!("Hex parse error: {}", e))?
     } else {
@@ -513,26 +514,23 @@ pub async fn send_data_raw(
         bytes
     };
 
-    route_bytes(state, &bytes).await
+    handle.send(&bytes).await
 }
 
 #[tauri::command]
 pub async fn send_raw_bytes(
-    state: tauri::State<'_, SerialState>,
+    handle: tauri::State<'_, ConnHandle>,
     bytes: Vec<u8>,
 ) -> Result<(), String> {
-    let state = state.inner();
-    route_bytes(&state, &bytes).await
+    handle.send(&bytes).await
 }
 
 #[tauri::command]
 pub async fn reset_io_counters(
     state: tauri::State<'_, SerialState>,
 ) -> Result<(), String> {
-    state.tx_bytes.store(0, Ordering::SeqCst);
-    state.rx_bytes.store(0, Ordering::SeqCst);
-    state.net.tx_bytes.store(0, Ordering::SeqCst);
-    state.net.rx_bytes.store(0, Ordering::SeqCst);
+    // 清空按钮联动：清零并立即发射 io-stats，前端状态栏即刻归零。
+    state.meter.reset_and_emit();
     Ok(())
 }
 
@@ -551,9 +549,9 @@ pub async fn set_reconnect_config(
 
 #[tauri::command]
 pub async fn get_port_info(
-    state: tauri::State<'_, SerialState>,
+    handle: tauri::State<'_, ConnHandle>,
 ) -> Result<serde_json::Value, String> {
-    Ok(state.to_port_info().await)
+    Ok(handle.info().await)
 }
 
 #[tauri::command]

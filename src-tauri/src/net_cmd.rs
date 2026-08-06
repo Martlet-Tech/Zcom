@@ -1,6 +1,7 @@
+use crate::conn::{validate_mode, ConnHandle};
 use crate::state::{
-    ConnState, NetIo, NetState, MODE_IDF, MODE_SERIAL, MODE_TCP_CLIENT, MODE_TCP_SERVER,
-    MODE_UDP_CLIENT, MODE_UDP_SERVER,
+    ConnState, NetIo, NetState, MODE_TCP_CLIENT, MODE_TCP_SERVER, MODE_UDP_CLIENT,
+    MODE_UDP_SERVER,
 };
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream, ToSocketAddrs, UdpSocket};
@@ -19,6 +20,10 @@ fn stale(state: &NetState, gen: u32) -> bool {
     state.generation.load(Ordering::SeqCst) != gen
 }
 
+fn tool_parked(state: &NetState) -> bool {
+    state.tool.is_busy()
+}
+
 fn resolve(host: &str, port: u16) -> Result<SocketAddr, String> {
     (host, port)
         .to_socket_addrs()
@@ -33,7 +38,7 @@ pub async fn set_conn_mode(
     mode: u8,
 ) -> Result<(), String> {
     let state = state.inner();
-    if !(MODE_SERIAL..=MODE_IDF).contains(&mode) {
+    if !validate_mode(mode) {
         return Err("Unknown connection mode".into());
     }
     state.mode.store(mode, Ordering::SeqCst);
@@ -42,22 +47,40 @@ pub async fn set_conn_mode(
 
 #[tauri::command]
 pub async fn net_open(
-    state: tauri::State<'_, NetState>,
+    handle: tauri::State<'_, ConnHandle>,
     app: tauri::AppHandle,
     mode: u8,
     remote_host: Option<String>,
     remote_port: Option<u16>,
     local_port: Option<u16>,
 ) -> Result<(), String> {
-    let state = state.inner();
-    let _guard = state.op_lock.lock().await;
+    handle
+        .open(
+            &app,
+            crate::conn::ConnParams {
+                mode,
+                remote_host,
+                remote_port,
+                local_port,
+                ..Default::default()
+            },
+        )
+        .await
+}
+
+pub(crate) async fn net_open_inner(
+    state: &NetState,
+    app: &tauri::AppHandle,
+    mode: u8,
+    remote_host: Option<String>,
+    remote_port: Option<u16>,
+    local_port: Option<u16>,
+) -> Result<(), String> {
     if state.connected.load(Ordering::SeqCst) {
         return Err("Connection already open".into());
     }
-    state.mode.store(mode, Ordering::SeqCst);
     state.stop_reading.store(false, Ordering::SeqCst);
-    state.tx_bytes.store(0, Ordering::SeqCst);
-    state.rx_bytes.store(0, Ordering::SeqCst);
+    state.meter.reset();
     let gen = state.generation.fetch_add(1, Ordering::SeqCst) + 1;
 
     let c_state = state.clone();
@@ -139,13 +162,11 @@ fn register_io(state: &NetState, io: NetIo, remote: Option<String>) {
 }
 
 #[tauri::command]
-pub async fn net_close(state: tauri::State<'_, NetState>) -> Result<(), String> {
-    let state = state.inner();
-    let _guard = state.op_lock.lock().await;
-    net_close_inner(&state).await
+pub async fn net_close(handle: tauri::State<'_, ConnHandle>) -> Result<(), String> {
+    handle.close(crate::conn::Conn::Net).await
 }
 
-async fn net_close_inner(state: &NetState) -> Result<(), String> {
+pub(crate) async fn net_close_inner(state: &NetState) -> Result<(), String> {
     state.stop_reading.store(true, Ordering::SeqCst);
     state.connected.store(false, Ordering::SeqCst);
     state.generation.fetch_add(1, Ordering::SeqCst);
@@ -178,7 +199,6 @@ pub async fn net_send_bytes(state: &NetState, bytes: &[u8]) -> Result<(), String
         }
         None => return Err("Connection not open".into()),
     }
-    state.tx_bytes.fetch_add(bytes.len() as u64, Ordering::SeqCst);
     Ok(())
 }
 
@@ -200,6 +220,8 @@ fn stream_read_loop(
     app: &tauri::AppHandle,
     gen: u32,
 ) -> NetReadEnd {
+    // 非侵入计数：流句柄包 MeteredReader 装饰器，循环逻辑不感知计数。
+    let mut reader = crate::conn::MeteredReader::new(stream, state.meter.clone());
     let mut buf = [0u8; 4096];
     let mut acc: Vec<u8> = Vec::new();
     let mut last_time = Instant::now();
@@ -211,11 +233,14 @@ fn stream_read_loop(
             }
             return NetReadEnd::Stopped;
         }
-        match stream.read(&mut buf) {
+        if tool_parked(state) {
+            std::thread::sleep(Duration::from_millis(10));
+            continue;
+        }
+        match reader.read(&mut buf) {
             Ok(n) if n > 0 => {
                 acc.extend_from_slice(&buf[..n]);
                 last_time = Instant::now();
-                state.rx_bytes.fetch_add(n as u64, Ordering::SeqCst);
                 if acc.len() >= 4096 {
                     let data = std::mem::take(&mut acc);
                     emit_serial_data(app, data, false);
@@ -337,8 +362,7 @@ fn tcp_server_manager(state: NetState, app: tauri::AppHandle, listener: TcpListe
                 let _ = stream.set_read_timeout(Some(Duration::from_millis(1)));
                 *state.io.lock().unwrap_or_else(|e| e.into_inner()) = Some(NetIo::Stream(stream));
                 *state.remote.lock().unwrap_or_else(|e| e.into_inner()) = Some(peer.to_string());
-                state.tx_bytes.store(0, Ordering::SeqCst);
-                state.rx_bytes.store(0, Ordering::SeqCst);
+                state.meter.reset();
 
                 let stopped = loop {
                     if state.stop_reading.load(Ordering::SeqCst) || stale(&state, gen) {
@@ -385,6 +409,10 @@ fn udp_read_loop(state: NetState, app: tauri::AppHandle, gen: u32) {
             cleanup_and_close(&state, &app);
             return;
         }
+        if tool_parked(&state) {
+            std::thread::sleep(Duration::from_millis(10));
+            continue;
+        }
         let sock = {
             let io = state.io.lock().unwrap_or_else(|e| e.into_inner());
             match io.as_ref() {
@@ -407,7 +435,7 @@ fn udp_read_loop(state: NetState, app: tauri::AppHandle, gen: u32) {
                         *peer.lock().unwrap_or_else(|e| e.into_inner()) = Some(from);
                     }
                 }
-                state.rx_bytes.fetch_add(n as u64, Ordering::SeqCst);
+                state.meter.add_rx(n as u64);
                 emit_serial_data(&app, buf[..n].to_vec(), true);
             }
             Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => {}

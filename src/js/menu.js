@@ -13,7 +13,7 @@ let stopBits = 1;
 let parity = 'none';
 let flowControl = 'none';
 
-const MODE_MAP = { serial: 0, 'tcp-client': 1, 'tcp-server': 2, 'udp-client': 3, 'udp-server': 4, idf: 5 };
+const MODE_MAP = { serial: 0, 'tcp-client': 1, 'tcp-server': 2, 'udp-client': 3, 'udp-server': 4, idf: 0 };
 const CONN_TYPES = [
   { v: 'serial', key: 'conn.serial' },
   { v: 'tcp-client', key: 'conn.tcpClient' },
