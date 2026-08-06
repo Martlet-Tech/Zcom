@@ -49,6 +49,11 @@ export function createTerminal(settings) {
     }
   });
 
+  // SSH PTY 尺寸同步（非 SSH 连接时后端空操作，安全）。
+  term.onResize(({ cols, rows }) => {
+    invoke('ssh_resize', { cols, rows }).catch(() => {});
+  });
+
   document.addEventListener('settings-applied', (e) => {
     echoEnabled = e.detail.echoEnabled !== false;
   });
@@ -75,6 +80,11 @@ export function termWrite(text) {
 
 export function termFit() {
   if (fitAddon) fitAddon.fit();
+}
+
+/// 当前终端尺寸（SSH 连接时作为 PTY 初始尺寸）。
+export function getTermSize() {
+  return term ? { cols: term.cols, rows: term.rows } : { cols: 80, rows: 24 };
 }
 
 export function clearTerminal() {

@@ -53,10 +53,13 @@
     "tcpServer": "TCP Server",
     "udpClient": "UDP Client",
     "udpServer": "UDP Server",
+    "ssh": "SSH",
     "idf": "IDF",
     "remoteIp": "对方IP",
     "remotePort": "对方端口",
-    "localPort": "本地端口"
+    "localPort": "本地端口",
+    "sshUser": "SSH用户",
+    "sshPass": "SSH密码"
   },
   "receive": {
     "clear": "清空",
@@ -137,6 +140,16 @@
     "espDetect": "自动探测",
     "espBrowse": "浏览…",
     "espCheck": "检查"
+  },
+  "ssh": {
+    "hostKeyTitle": "SSH 主机密钥确认",
+    "hostKeyHost": "主机:",
+    "hostKeyFingerprint": "指纹:",
+    "hostKeyWarning": "首次连接该主机，无法验证其真实性。请确认指纹与服务器管理员提供的一致（防中间人攻击）。",
+    "hostKeyAutoConnect": "接受后将自动连接。",
+    "hostKeyAccepted": "已信任该主机指纹",
+    "hostKeyAccept": "接受并继续",
+    "hostKeyReject": "拒绝"
   },
   "esp": {
     "buildTitle": "ESP-IDF Build + Flash",

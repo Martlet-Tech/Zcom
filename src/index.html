@@ -74,6 +74,8 @@
         <input type="text" id="net-remote-ip" class="net-input" spellcheck="false" placeholder="对方IP" data-i18n-placeholder="conn.remoteIp" />
         <input type="number" id="net-remote-port" class="net-input net-port" min="1" max="65535" placeholder="对方端口" data-i18n-placeholder="conn.remotePort" />
         <input type="number" id="net-local-port" class="net-input net-port" min="1" max="65535" placeholder="本地端口" data-i18n-placeholder="conn.localPort" />
+        <input type="text" id="ssh-user" class="net-input" style="display:none" spellcheck="false" placeholder="SSH用户" data-i18n-placeholder="conn.sshUser" />
+        <input type="password" id="ssh-pass" class="net-input" style="display:none" placeholder="SSH密码" data-i18n-placeholder="conn.sshPass" />
       </div>
       <button id="btn-refresh-ports" class="small-btn" title="刷新串口" data-i18n-title="menu.refreshPorts"><i data-lucide="refresh-cw"></i></button>
       <button id="btn-toggle-port" class="small-btn" disabled data-i18n="common.open">打开</button>
@@ -383,6 +385,32 @@
         <span id="esp-flash-status" class="label">—</span>
         <div style="flex:1"></div>
         <button id="btn-esp-cancel" class="small-btn" data-i18n="common.cancel">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="ssh-key-overlay" class="overlay hidden">
+    <div id="ssh-key-dialog" class="dialog" style="width:560px;">
+      <div class="dialog-titlebar">
+        <span data-i18n="ssh.hostKeyTitle">SSH 主机密钥确认</span>
+        <button class="dialog-close title-btn" id="btn-ssh-key-close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="dialog-body" style="padding:12px;">
+        <div class="setting-row" id="ssh-key-host-row">
+          <label data-i18n="ssh.hostKeyHost">主机:</label>
+          <span id="ssh-key-host" class="label" style="user-select:text">—</span>
+        </div>
+        <div class="setting-row" style="align-items:flex-start">
+          <label data-i18n="ssh.hostKeyFingerprint">指纹:</label>
+          <span id="ssh-key-fingerprint" class="label" style="user-select:text;word-break:break-all">—</span>
+        </div>
+        <p class="ssh-key-warning" data-i18n="ssh.hostKeyWarning">首次连接该主机，无法验证其真实性。请确认指纹与服务器管理员提供的一致（防中间人攻击）。</p>
+        <p class="ssh-key-hint" data-i18n="ssh.hostKeyAutoConnect">接受后将自动连接。</p>
+      </div>
+      <div class="dialog-footer">
+        <button id="btn-ssh-key-reject" class="small-btn" data-i18n="ssh.hostKeyReject">拒绝</button>
+        <div style="flex:1"></div>
+        <button id="btn-ssh-key-accept" class="small-btn primary" data-i18n="ssh.hostKeyAccept">接受并继续</button>
       </div>
     </div>
   </div>

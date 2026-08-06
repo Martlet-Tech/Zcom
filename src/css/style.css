@@ -642,6 +642,17 @@ select:focus, input:focus, textarea:focus {
 .chk-label input[type="checkbox"] {
   accent-color: var(--accent);
 }
+.ssh-key-warning {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #e6a23c;
+  line-height: 1.5;
+}
+.ssh-key-hint {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--fg-dim);
+}
 .label {
   font-size: 12px;
   color: var(--fg-dim);

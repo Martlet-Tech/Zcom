@@ -1,6 +1,6 @@
 use crate::net_cmd;
 use crate::serial_cmd;
-use crate::state::{NetIo, NetState, SerialState, MODE_SERIAL, MODE_UDP_SERVER};
+use crate::state::{NetIo, NetState, SerialState, MODE_SERIAL};
 use std::io::{Read, Write};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex as StdMutex};
@@ -8,7 +8,8 @@ use std::time::{Duration, Instant};
 use tauri::Emitter;
 use tokio::sync::{Mutex as AsyncMutex, MutexGuard as AsyncMutexGuard};
 
-pub const MODE_MAX: u8 = MODE_UDP_SERVER;
+pub const MODE_SSH: u8 = 5;
+pub const MODE_MAX: u8 = MODE_SSH;
 
 pub fn validate_mode(mode: u8) -> bool {
     (MODE_SERIAL..=MODE_MAX).contains(&mode)
@@ -141,11 +142,12 @@ impl ToolGate {
     }
 }
 
-/// 兄弟连接：Serial / Net（TCP、UDP 各模式共用一个 Net 实现）。
+/// 兄弟连接：Serial / Net（TCP、UDP 各模式共用一个 Net 实现）/ Ssh。
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Conn {
     Serial,
     Net,
+    Ssh,
 }
 
 #[derive(Clone, Default)]
@@ -167,6 +169,7 @@ pub struct ConnParams {
 pub struct ConnHandle {
     pub serial: Arc<SerialState>,
     pub net: Arc<NetState>,
+    pub ssh: Arc<crate::ssh_cmd::SshState>,
     pub op_lock: Arc<AsyncMutex<()>>,
     pub tool: Arc<ToolGate>,
     pub meter: Arc<Meter>,
@@ -176,13 +179,16 @@ impl ConnHandle {
     pub fn new(
         serial: Arc<SerialState>,
         net: Arc<NetState>,
+        ssh: Arc<crate::ssh_cmd::SshState>,
+        op_lock: Arc<AsyncMutex<()>>,
         tool: Arc<ToolGate>,
         meter: Arc<Meter>,
     ) -> Self {
         Self {
             serial,
             net,
-            op_lock: Arc::new(AsyncMutex::new(())),
+            ssh,
+            op_lock,
             tool,
             meter,
         }
@@ -196,8 +202,38 @@ impl ConnHandle {
     pub fn active(&self) -> Conn {
         match self.net.mode.load(Ordering::SeqCst) {
             MODE_SERIAL => Conn::Serial,
+            MODE_SSH => Conn::Ssh,
             _ => Conn::Net,
         }
+    }
+
+    fn ensure_idle(&self) -> Result<(), String> {
+        if self.serial.connected.load(Ordering::SeqCst) {
+            return Err("Serial port is open, close it first".into());
+        }
+        if self.net.connected.load(Ordering::SeqCst) {
+            return Err("Network connection is open, close it first".into());
+        }
+        if self.ssh.connected.load(Ordering::SeqCst) {
+            return Err("SSH connection is open, close it first".into());
+        }
+        Ok(())
+    }
+
+    /// SSH 连接专用入口（认证参数不同，不走 ConnParams）。
+    pub async fn open_ssh(
+        &self,
+        app: &tauri::AppHandle,
+        host: &str,
+        port: u16,
+        user: &str,
+        password: &str,
+        key_path: Option<&str>,
+        cols: u32,
+        rows: u32,
+    ) -> Result<(), String> {
+        self.ensure_idle()?;
+        crate::ssh_cmd::ssh_connect_inner(self, app, host, port, user, password, key_path, cols, rows).await
     }
 
     pub async fn open(&self, app: &tauri::AppHandle, params: ConnParams) -> Result<(), String> {
@@ -212,6 +248,9 @@ impl ConnHandle {
                 }
                 if self.net.connected.load(Ordering::SeqCst) {
                     return Err("Network connection is open, close it first".into());
+                }
+                if self.ssh.connected.load(Ordering::SeqCst) {
+                    return Err("SSH connection is open, close it first".into());
                 }
                 self.net.mode.store(MODE_SERIAL, Ordering::SeqCst);
                 let path = params.path.as_deref().ok_or("Port path required")?;
@@ -232,12 +271,15 @@ impl ConnHandle {
                 )
                 .await
             }
-            mode if validate_mode(mode) => {
+            mode if validate_mode(mode) && mode != MODE_SSH => {
                 if self.net.connected.load(Ordering::SeqCst) {
                     return Err("Connection already open".into());
                 }
                 if self.serial.connected.load(Ordering::SeqCst) {
                     return Err("Serial port is open, close it first".into());
+                }
+                if self.ssh.connected.load(Ordering::SeqCst) {
+                    return Err("SSH connection is open, close it first".into());
                 }
                 self.net.mode.store(mode, Ordering::SeqCst);
                 net_cmd::net_open_inner(
@@ -262,6 +304,7 @@ impl ConnHandle {
         match target {
             Conn::Serial => serial_cmd::close_port_inner(&self.serial).await,
             Conn::Net => net_cmd::net_close_inner(&self.net).await,
+            Conn::Ssh => crate::ssh_cmd::ssh_disconnect_inner(&self.ssh).await,
         }
     }
 
@@ -283,6 +326,20 @@ impl ConnHandle {
                 Ok(())
             }
             Conn::Net => net_cmd::net_send_bytes(&self.net, bytes).await,
+            Conn::Ssh => {
+                if !self.ssh.connected.load(Ordering::SeqCst) {
+                    return Err("SSH not connected".into());
+                }
+                let write = self.ssh.write.lock().await;
+                match write.as_ref() {
+                    Some(w) => w
+                        .data_bytes(bytes.to_vec())
+                        .await
+                        .map_err(|e| format!("SSH send error: {}", e))?,
+                    None => return Err("SSH channel not ready".into()),
+                }
+                Ok(())
+            }
         }
     }
 
@@ -355,6 +412,7 @@ impl ConnHandle {
                     None => Err("Connection not open".into()),
                 }
             }
+            Conn::Ssh => Err("SSH 通道不支持字节级读".into()),
         }
     }
 
@@ -372,7 +430,7 @@ impl ConnHandle {
                 };
                 port.set_dtr(on).map_err(|e| format!("set_dtr error: {}", e))
             }
-            Conn::Net => Ok(()),
+            Conn::Net | Conn::Ssh => Ok(()),
         }
     }
 
@@ -390,7 +448,7 @@ impl ConnHandle {
                 };
                 port.set_rts(on).map_err(|e| format!("set_rts error: {}", e))
             }
-            Conn::Net => Ok(()),
+            Conn::Net | Conn::Ssh => Ok(()),
         }
     }
 
@@ -398,6 +456,7 @@ impl ConnHandle {
         match self.active() {
             Conn::Serial => self.serial.to_serial_info().await,
             Conn::Net => self.net.to_net_info().await,
+            Conn::Ssh => self.ssh.info(),
         }
     }
 }
@@ -405,7 +464,7 @@ impl ConnHandle {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::state::{MODE_TCP_CLIENT, MODE_TCP_SERVER, MODE_UDP_CLIENT};
+    use crate::state::{MODE_TCP_CLIENT, MODE_TCP_SERVER, MODE_UDP_CLIENT, MODE_UDP_SERVER};
     use std::io::Cursor;
 
     fn test_states() -> (Arc<NetState>, Arc<SerialState>, Arc<ConnHandle>, Arc<Meter>) {
@@ -413,7 +472,16 @@ mod tests {
         let meter = Arc::new(Meter::default());
         let net = NetState::new(tool.clone(), meter.clone());
         let serial = SerialState::new_with_net(net.clone());
-        let handle = ConnHandle::new(Arc::new(serial.clone()), Arc::new(net.clone()), tool, meter.clone());
+        let op_lock = Arc::new(AsyncMutex::new(()));
+        let ssh = Arc::new(crate::ssh_cmd::SshState::new(op_lock.clone(), meter.clone()));
+        let handle = ConnHandle::new(
+            Arc::new(serial.clone()),
+            Arc::new(net.clone()),
+            ssh,
+            op_lock,
+            tool,
+            meter.clone(),
+        );
         (Arc::new(net), Arc::new(serial), Arc::new(handle), meter)
     }
 
@@ -424,7 +492,8 @@ mod tests {
         assert!(validate_mode(MODE_TCP_SERVER));
         assert!(validate_mode(MODE_UDP_CLIENT));
         assert!(validate_mode(MODE_UDP_SERVER));
-        assert!(!validate_mode(5));
+        assert!(validate_mode(MODE_SSH));
+        assert!(!validate_mode(6));
         assert!(!validate_mode(255));
     }
 
@@ -446,6 +515,8 @@ mod tests {
         assert_eq!(handle.active(), Conn::Net);
         net.mode.store(MODE_UDP_SERVER, Ordering::SeqCst);
         assert_eq!(handle.active(), Conn::Net);
+        net.mode.store(MODE_SSH, Ordering::SeqCst);
+        assert_eq!(handle.active(), Conn::Ssh);
     }
 
     #[test]

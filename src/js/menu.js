@@ -5,6 +5,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { listen } from '@tauri-apps/api/event';
 import { t } from './i18n.js';
 import { PortState, PortEvent, portFSM } from './serial-state.js';
+import { getTermSize } from './terminal.js';
 
 let currentPort = null;
 let baudRate = 115200;
@@ -13,19 +14,22 @@ let stopBits = 1;
 let parity = 'none';
 let flowControl = 'none';
 
-const MODE_MAP = { serial: 0, 'tcp-client': 1, 'tcp-server': 2, 'udp-client': 3, 'udp-server': 4, idf: 0 };
+const MODE_MAP = { serial: 0, 'tcp-client': 1, 'tcp-server': 2, 'udp-client': 3, 'udp-server': 4, idf: 0, ssh: 5 };
 const CONN_TYPES = [
   { v: 'serial', key: 'conn.serial' },
   { v: 'tcp-client', key: 'conn.tcpClient' },
   { v: 'tcp-server', key: 'conn.tcpServer' },
   { v: 'udp-client', key: 'conn.udpClient' },
   { v: 'udp-server', key: 'conn.udpServer' },
+  { v: 'ssh', key: 'conn.ssh' },
   { v: 'idf', key: 'conn.idf' },
 ];
 let connType = 'serial';
 let netRemoteHost = '';
 let netRemotePort = '';
 let netLocalPort = '';
+let sshUser = '';
+let sshPass = '';
 
 export function initMenu() {
   const comEl = document.getElementById('com-select');
@@ -44,6 +48,8 @@ export function initMenu() {
   const netIpEl = document.getElementById('net-remote-ip');
   const netRemotePortEl = document.getElementById('net-remote-port');
   const netLocalPortEl = document.getElementById('net-local-port');
+  const sshUserEl = document.getElementById('ssh-user');
+  const sshPassEl = document.getElementById('ssh-pass');
 
   let statusTitleKey = 'common.disconnected';
   let statusClass = 'port-status';
@@ -225,6 +231,9 @@ export function initMenu() {
 
   function canOpen() {
     if (connType === 'serial' || connType === 'idf') return !!currentPort;
+    if (connType === 'ssh') {
+      return netRemoteHost.trim() !== '' && parseInt(netRemotePort) > 0 && sshUser.trim() !== '';
+    }
     if (connType === 'tcp-client' || connType === 'udp-client') {
       return netRemoteHost.trim() !== '' && parseInt(netRemotePort) > 0;
     }
@@ -236,10 +245,13 @@ export function initMenu() {
     serialGroup.classList.toggle('hidden', !needsSerial);
     netGroup.classList.toggle('hidden', needsSerial);
     refreshBtn.style.display = needsSerial ? '' : 'none';
+    const isSsh = connType === 'ssh';
     const isClient = connType === 'tcp-client' || connType === 'udp-client';
-    netIpEl.style.display = isClient ? '' : 'none';
-    netRemotePortEl.style.display = isClient ? '' : 'none';
-    netLocalPortEl.style.display = connType === 'serial' || connType === 'idf' || isClient ? 'none' : '';
+    sshUserEl.style.display = isSsh ? '' : 'none';
+    sshPassEl.style.display = isSsh ? '' : 'none';
+    netIpEl.style.display = isClient || isSsh ? '' : 'none';
+    netRemotePortEl.style.display = isClient || isSsh ? '' : 'none';
+    netLocalPortEl.style.display = connType === 'serial' || connType === 'idf' || isClient || isSsh ? 'none' : '';
     applyPortUI();
     document.dispatchEvent(new CustomEvent('conn-type-changed', { detail: { type: connType } }));
   }
@@ -264,6 +276,8 @@ export function initMenu() {
       try {
         if (connType === 'serial' || connType === 'idf') {
           await invoke('close_port');
+        } else if (connType === 'ssh') {
+          await invoke('ssh_disconnect');
         } else {
           await invoke('net_close');
         }
@@ -319,6 +333,17 @@ export function initMenu() {
     });
   });
 
+  [sshUserEl, sshPassEl].forEach(el => {
+    el.addEventListener('input', () => {
+      sshUser = sshUserEl.value;
+      sshPass = sshPassEl.value;
+      if (portFSM.state === PortState.DISCONNECTED) applyPortUI();
+    });
+    el.addEventListener('change', () => {
+      patchSettings({ sshUser: sshUserEl.value, sshPass: sshPassEl.value });
+    });
+  });
+
   function updateBaudSelection(rate) {
     baudText.textContent = String(rate);
     baudDropdown.querySelectorAll('.cs-option').forEach(o => {
@@ -338,9 +363,13 @@ export function initMenu() {
     netRemoteHost = saved.netRemoteHost || '';
     netRemotePort = saved.netRemotePort || '';
     netLocalPort = saved.netLocalPort || '';
+    sshUser = saved.sshUser || '';
+    sshPass = saved.sshPass || '';
     netIpEl.value = netRemoteHost;
     netRemotePortEl.value = netRemotePort;
     netLocalPortEl.value = netLocalPort;
+    sshUserEl.value = sshUser;
+    sshPassEl.value = sshPass;
     const active = connTypeDropdown.querySelector(`.cs-option[data-value="${connType}"]`);
     if (active) active.classList.add('selected');
     connTypeText.textContent = t(CONN_TYPES.find(c => c.v === connType)?.key || 'conn.serial');
@@ -516,6 +545,54 @@ export function initMenu() {
 
   refreshBtn.addEventListener('click', refresh);
 
+  /// 打开连接（按 connType 分发）。供打开按钮与指纹接受后的自动重连复用。
+  async function openConnection() {
+    if (portFSM.state !== PortState.DISCONNECTED) return;
+    if (!canOpen()) return;
+    transition(PortEvent.OPEN_START, { portName: connType });
+    try {
+      if (connType === 'serial' || connType === 'idf') {
+        await invoke('open_port', {
+          path: currentPort,
+          baud: baudRate,
+          charSize: charSize,
+          stopBits: stopBits,
+          parity: parity,
+          flowControl: flowControl,
+        });
+      } else if (connType === 'ssh') {
+        const { cols, rows } = getTermSize();
+        await invoke('ssh_connect', {
+          host: netRemoteHost.trim(),
+          port: parseInt(netRemotePort) > 0 ? parseInt(netRemotePort) : 22,
+          user: sshUser.trim(),
+          password: sshPass,
+          keyPath: null,
+          cols,
+          rows,
+        });
+      } else {
+        await invoke('net_open', {
+          mode: MODE_MAP[connType],
+          remoteHost: netRemoteHost.trim() || null,
+          remotePort: parseInt(netRemotePort) > 0 ? parseInt(netRemotePort) : null,
+          localPort: parseInt(netLocalPort) > 0 ? parseInt(netLocalPort) : null,
+        });
+      }
+      transition(PortEvent.OPEN_OK);
+    } catch (e) {
+      console.error('open error:', e);
+      if (String(e) === 'HOST_KEY_PENDING') {
+        // 指纹确认弹窗已由 ssh-host-key 事件展示，回退到断开态但不当作失败提示。
+        transition(PortEvent.OPEN_FAIL);
+        return;
+      }
+      transition(PortEvent.OPEN_FAIL);
+      statusEl.className = 'port-status error';
+      statusEl.title = t('common.connectionFailed');
+    }
+  }
+
   toggleBtn.addEventListener('click', async () => {
     const s = portFSM.state;
     if (s === PortState.CONNECTED || s === PortState.RECONNECTING) {
@@ -523,6 +600,8 @@ export function initMenu() {
       try {
         if (connType === 'serial' || connType === 'idf') {
           await invoke('close_port');
+        } else if (connType === 'ssh') {
+          await invoke('ssh_disconnect');
         } else {
           await invoke('net_close');
         }
@@ -533,33 +612,7 @@ export function initMenu() {
       return;
     }
     if (s === PortState.DISCONNECTED) {
-      if (!canOpen()) return;
-      transition(PortEvent.OPEN_START, { portName: connType });
-      try {
-        if (connType === 'serial' || connType === 'idf') {
-          await invoke('open_port', {
-            path: currentPort,
-            baud: baudRate,
-            charSize: charSize,
-            stopBits: stopBits,
-            parity: parity,
-            flowControl: flowControl,
-          });
-        } else {
-          await invoke('net_open', {
-            mode: MODE_MAP[connType],
-            remoteHost: netRemoteHost.trim() || null,
-            remotePort: parseInt(netRemotePort) > 0 ? parseInt(netRemotePort) : null,
-            localPort: parseInt(netLocalPort) > 0 ? parseInt(netLocalPort) : null,
-          });
-        }
-        transition(PortEvent.OPEN_OK);
-      } catch (e) {
-        console.error('open error:', e);
-        transition(PortEvent.OPEN_FAIL);
-        statusEl.className = 'port-status error';
-        statusEl.title = t('common.connectionFailed');
-      }
+      await openConnection();
     }
   });
 
@@ -636,6 +689,44 @@ export function initMenu() {
   document.addEventListener('port-closed', () => {
     transition(PortEvent.CLOSED);
     if ((connType === 'serial' || connType === 'idf') && !comEl.classList.contains('open')) refresh();
+  });
+
+  // ===== SSH 主机密钥确认 =====
+  const sshKeyOverlay = document.getElementById('ssh-key-overlay');
+  const sshKeyHostEl = document.getElementById('ssh-key-host');
+  const sshKeyFpEl = document.getElementById('ssh-key-fingerprint');
+  let pendingSshFingerprint = null;
+
+  function closeSshKeyDialog() {
+    sshKeyOverlay.classList.add('hidden');
+    pendingSshFingerprint = null;
+  }
+
+  listen('ssh-host-key', (e) => {
+    const p = e.payload || {};
+    sshKeyHostEl.textContent = `${p.host}:${p.port}`;
+    sshKeyFpEl.textContent = p.fingerprint || '';
+    pendingSshFingerprint = p.fingerprint || null;
+    sshKeyOverlay.classList.remove('hidden');
+  });
+
+  document.getElementById('btn-ssh-key-accept')?.addEventListener('click', async () => {
+    if (!pendingSshFingerprint) return;
+    try {
+      await invoke('ssh_accept_host_key', { fingerprint: pendingSshFingerprint });
+      closeSshKeyDialog();
+      showToast(t('ssh.hostKeyAccepted'), 'ok');
+      await openConnection();
+    } catch (err) {
+      console.error('ssh_accept_host_key error:', err);
+      closeSshKeyDialog();
+      showToast(String(err), 'error');
+    }
+  });
+  document.getElementById('btn-ssh-key-reject')?.addEventListener('click', closeSshKeyDialog);
+  document.getElementById('btn-ssh-key-close')?.addEventListener('click', closeSshKeyDialog);
+  sshKeyOverlay?.addEventListener('click', (e) => {
+    if (e.target === sshKeyOverlay) closeSshKeyDialog();
   });
 }
 

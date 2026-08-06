@@ -53,10 +53,13 @@
     "tcpServer": "TCP Server",
     "udpClient": "UDP Client",
     "udpServer": "UDP Server",
+    "ssh": "SSH",
     "idf": "IDF",
     "remoteIp": "Remote IP",
     "remotePort": "Remote port",
-    "localPort": "Local port"
+    "localPort": "Local port",
+    "sshUser": "SSH User",
+    "sshPass": "SSH Password"
   },
   "receive": {
     "clear": "Clear",
@@ -137,6 +140,16 @@
     "espDetect": "Auto detect",
     "espBrowse": "Browse…",
     "espCheck": "Check"
+  },
+  "ssh": {
+    "hostKeyTitle": "SSH Host Key Confirmation",
+    "hostKeyHost": "Host:",
+    "hostKeyFingerprint": "Fingerprint:",
+    "hostKeyWarning": "The authenticity of this host cannot be established on first connect. Verify the fingerprint matches what the server administrator provides (MITM protection).",
+    "hostKeyAutoConnect": "Will reconnect automatically after accepting.",
+    "hostKeyAccepted": "Host fingerprint trusted",
+    "hostKeyAccept": "Accept and continue",
+    "hostKeyReject": "Reject"
   },
   "esp": {
     "buildTitle": "ESP-IDF Build + Flash",

@@ -9,9 +9,11 @@ mod encoding_utils;
 mod multi_string;
 mod net_cmd;
 mod esp_cmd;
+mod ssh_cmd;
 
 use conn::{ConnHandle, Meter, ToolGate};
 use esp_cmd::EspHandle;
+use ssh_cmd::SshState;
 use state::{NetState, SerialState};
 use receive_buffer::ReceiveBuffer;
 use mcp_server::McpServerHandle;
@@ -76,11 +78,16 @@ pub fn run() {
 
     let tool = std::sync::Arc::new(ToolGate::default());
     let meter = std::sync::Arc::new(Meter::default());
+    let op_lock = std::sync::Arc::new(tokio::sync::Mutex::new(()));
     let net = NetState::new(tool.clone(), meter.clone());
     let serial = SerialState::new_with_net(net.clone());
+    let ssh = SshState::new(op_lock.clone(), meter.clone());
+    let ssh_arc = std::sync::Arc::new(ssh.clone());
     let conn = ConnHandle::new(
         std::sync::Arc::new(serial.clone()),
         std::sync::Arc::new(net.clone()),
+        ssh_arc,
+        op_lock,
         tool,
         meter,
     );
@@ -93,6 +100,7 @@ pub fn run() {
         .manage(serial)
         .manage(net)
         .manage(conn)
+        .manage(ssh)
         .manage(EspHandle::new())
         .manage(ReceiveBuffer::new())
         .manage(McpServerHandle::new())
@@ -113,6 +121,10 @@ pub fn run() {
             net_cmd::net_open,
             net_cmd::net_close,
             net_cmd::set_conn_mode,
+            ssh_cmd::ssh_connect,
+            ssh_cmd::ssh_disconnect,
+            ssh_cmd::ssh_accept_host_key,
+            ssh_cmd::ssh_resize,
             esp_cmd::set_esp_config,
             esp_cmd::esp_build_flash_start,
             esp_cmd::esp_flash_cancel,
